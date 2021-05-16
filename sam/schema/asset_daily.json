@@ -1,0 +1,27 @@
+{
+    "TableName": "asset_daily",
+    "AttributeDefinitions": [
+        {
+            "AttributeName": "AssetCode",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "Date",
+            "AttributeType": "S"
+        }
+    ],
+    "KeySchema": [
+        {
+            "AttributeName": "AssetCode",
+            "KeyType": "HASH"
+        },
+        {
+            "AttributeName": "Date",
+            "KeyType": "RANGE"
+        }
+    ],
+    "ProvisionedThroughput": {
+        "ReadCapacityUnits": 1,
+        "WriteCapacityUnits": 1
+    }
+}

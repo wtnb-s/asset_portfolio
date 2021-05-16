@@ -1,0 +1,8 @@
+.DS_Store
+設計.txt
+sam/.aws-sam
+sam/template.yaml.sample
+sam/code/.devcontainer
+sam/code/registScore
+sam/code/getScore
+sam/code/go.sum

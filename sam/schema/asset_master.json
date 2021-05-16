@@ -1,0 +1,27 @@
+{
+    "TableName": "asset_master",
+    "AttributeDefinitions": [
+        {
+            "AttributeName": "AssetCode",
+            "AttributeType": "S"
+        },
+        {
+            "AttributeName": "CategoryId",
+            "AttributeType": "N"
+        }
+    ],
+    "KeySchema": [
+        {
+            "AttributeName": "AssetCode",
+            "KeyType": "HASH"
+        },
+        {
+            "AttributeName": "CategoryId",
+            "KeyType": "RANGE"
+        }
+    ],
+    "ProvisionedThroughput": {
+        "ReadCapacityUnits": 1,
+        "WriteCapacityUnits": 1
+    }
+}

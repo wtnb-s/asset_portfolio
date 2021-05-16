@@ -1,0 +1,88 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  SAM for asset portfolio
+
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 5
+    Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+      Variables:
+        DYNAMODB_ENDPOINT: ''
+
+Resources:
+  registAssetPriceFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      PackageType: Image
+
+      FunctionName: 'registAssetPrice'
+      Policies: AmazonDynamoDBFullAccess
+      Events:
+        CatchAll:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /fund/{assetCode}/
+            Method: POST
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          PARAM1: VALUE
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./
+      Dockerfile: Dockerfile
+      DockerBuildArgs: { BUILD_TARGET: registAssetPrice }
+
+  getAssetMasterFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      PackageType: Image
+
+      FunctionName: 'getAssetMaster'
+      Policies: AmazonDynamoDBReadOnlyAccess
+      Events:
+        CatchAll:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /asset/{assetCode}/
+            Method: GET
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          PARAM1: VALUE
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./
+      Dockerfile: Dockerfile
+      DockerBuildArgs: { BUILD_TARGET: getAssetMaster }
+
+  DynamoDBTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: asset_daily
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      ProvisionedThroughput:
+        WriteCapacityUnits: 1
+        ReadCapacityUnits: 1
+      AttributeDefinitions:
+        - AttributeName: AssetCode
+          AttributeType: S
+        - AttributeName: Date
+          AttributeType: S
+      KeySchema:
+        - KeyType: HASH
+          AttributeName: AssetCode
+        - KeyType: RANGE
+          AttributeName: Date
+
+Outputs:
+  # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
+  # Find out more about other implicit resources you can reference within SAM
+  # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  registScoreAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Regist Asset Price Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
+  registScoreFunction:
+    Description: 'Regist Asset Price Lambda Function ARN'
+    Value: !GetAtt registAssetPriceFunction.Arn
