@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"os"
-	"fmt"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -17,14 +16,14 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// 環境変数設定
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
 	// パスパラメータ取得
-	assetCode := request.PathParameters["assetCode"]
+	assetCode := request.QueryStringParameters["assetCode"]
+	categoryId := request.QueryStringParameters["categoryId"]
 
 	// Dynamodb接続設定
 	session := session.Must(session.NewSession())
 	config := aws.NewConfig().WithRegion("ap-northeast-1")
 	if len(endpoint) > 0 {
 		config = config.WithEndpoint(endpoint)
-		fmt.Print(endpoint)
 	}
 	db := dynamodb.New(session, config)
 
@@ -40,8 +39,12 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			":assetCode": {
 				S: aws.String(assetCode),
 			},
+			":categoryId": {
+				S: aws.String(categoryId),
+			},
 		},
-		KeyConditionExpression: aws.String("#AssetCode=:assetCode"),
+
+		KeyConditionExpression: aws.String("#AssetCode=:assetCode AND #CategoryId=:categoryId"),
 		ProjectionExpression:   aws.String("#AssetCode, #CategoryId, #Name, #Type"),
 	})
 	if err != nil {
@@ -66,7 +69,7 @@ func main() {
 
 type AssetMasterRes struct {
 	AssetCode  string `json:"AssetCode"`
-	CategoryId int    `json:"CategoryId"`
+	CategoryId string `json:"CategoryId"`
 	Name       string `json:"Name"`
 	Type       int    `json:"Type"`
 }

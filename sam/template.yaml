@@ -45,7 +45,7 @@ Resources:
         CatchAll:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /asset/{assetCode}/
+            Path: /asset/
             Method: GET
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
@@ -80,9 +80,16 @@ Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  registScoreAPI:
+  registAssetPriceAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Regist Asset Price Function'
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
-  registScoreFunction:
+  registAssetPriceFunction:
     Description: 'Regist Asset Price Lambda Function ARN'
     Value: !GetAtt registAssetPriceFunction.Arn
+
+  getAssetMasterAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Get Asset Master Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
+  getAssetMasterFunction:
+    Description: 'Get Asset Master Lambda Function ARN'
+    Value: !GetAtt getAssetMasterFunction.Arn
