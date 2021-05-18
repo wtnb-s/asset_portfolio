@@ -12,6 +12,13 @@ import (
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
 )
 
+type AssetMasterRes struct {
+	AssetCode  string `json:"AssetCode"`
+	CategoryId string `json:"CategoryId"`
+	Name       string `json:"Name"`
+	Type       int    `json:"Type"`
+}
+
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 環境変数設定
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
@@ -22,7 +29,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// Dynamodb接続設定
 	session := session.Must(session.NewSession())
 	config := aws.NewConfig().WithRegion("ap-northeast-1")
-	if len(endpoint) > 0 {
+	if endpoint != "" {
 		config = config.WithEndpoint(endpoint)
 	}
 	db := dynamodb.New(session, config)
@@ -65,11 +72,4 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 func main() {
 	lambda.Start(handler)
-}
-
-type AssetMasterRes struct {
-	AssetCode  string `json:"AssetCode"`
-	CategoryId string `json:"CategoryId"`
-	Name       string `json:"Name"`
-	Type       int    `json:"Type"`
 }
