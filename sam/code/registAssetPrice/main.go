@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
@@ -22,6 +21,18 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
+type AssetDailyRes struct {
+	AssetCode string `json:"AssetCode"`
+	Date      string `json:"Date"`
+	Price     int    `json:"Price"`
+}
+
+type AssetDaily struct {
+	AssetCode string
+	Date      string
+	Price     int
+}
+
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 環境変数設定
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
@@ -32,7 +43,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// 日付データを年・月・日に分解
 	splitDate := strings.Split(date, "-")
-	fmt.Println(splitDate)
 	year := splitDate[0]
 	month := splitDate[1]
 	day := splitDate[2]
@@ -53,7 +63,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// リクエスト発行
 	req, err := http.NewRequest("POST", _url, strings.NewReader(values.Encode()))
 	if err != nil {
-		fmt.Println(err)
 		return events.APIGatewayProxyResponse{}, err
 	}
 	// ヘッダー追加
@@ -61,7 +70,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// リクエスト送信
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println(err)
 		return events.APIGatewayProxyResponse{}, err
 	}
 
@@ -92,10 +100,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// item を dynamodb attributeに変換
 	av, err := dynamodbattribute.MarshalMap(assetDaily)
 	if err != nil {
-		fmt.Println(err)
 		return events.APIGatewayProxyResponse{}, err
 	}
-	fmt.Println(av)
 
 	// Dynamodb接続設定
 	session := session.Must(session.NewSession())
@@ -109,7 +115,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		Item:      av,
 	})
 	if err != nil {
-		fmt.Println(err)
 		return events.APIGatewayProxyResponse{}, err
 	}
 	assetDailyRes := AssetDailyRes{
@@ -127,16 +132,4 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 func main() {
 	lambda.Start(handler)
-}
-
-type AssetDailyRes struct {
-	AssetCode string `json:"AssetCode"`
-	Date      string `json:"Date"`
-	Price     int    `json:"Price"`
-}
-
-type AssetDaily struct {
-	AssetCode string
-	Date      string
-	Price     int
 }
