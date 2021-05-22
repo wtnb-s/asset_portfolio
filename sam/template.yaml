@@ -12,19 +12,25 @@ Globals:
         DYNAMODB_ENDPOINT: ''
 
 Resources:
-  registAssetPriceFunction:
+  AssetPriceFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
 
-      FunctionName: 'registAssetPrice'
+      FunctionName: 'AssetPrice'
       Policies: AmazonDynamoDBFullAccess
       Events:
-        CatchAll:
+        RegistAssetPrice:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /fund/{assetCode}/
             Method: POST
+        GetAssetPrice:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /fund/{assetCode}/
+            Method: GET
+
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
           PARAM1: VALUE
@@ -32,7 +38,7 @@ Resources:
       DockerTag: go1.x-v1
       DockerContext: ./
       Dockerfile: Dockerfile
-      DockerBuildArgs: { BUILD_TARGET: registAssetPrice }
+      DockerBuildArgs: { BUILD_TARGET: assetPrice }
 
   getAssetMasterFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
@@ -80,12 +86,12 @@ Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
-  registAssetPriceAPI:
+  AssetPriceAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Regist Asset Price Function'
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
-  registAssetPriceFunction:
-    Description: 'Regist Asset Price Lambda Function ARN'
-    Value: !GetAtt registAssetPriceFunction.Arn
+  AssetPriceFunction:
+    Description: 'Asset Price Lambda Function ARN'
+    Value: !GetAtt AssetPriceFunction.Arn
 
   getAssetMasterAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Get Asset Master Function'

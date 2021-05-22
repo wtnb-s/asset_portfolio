@@ -2,6 +2,7 @@
 設計.txt
 sam/.aws-sam
 sam/template.yaml.sample
+sam/test/env.json
 sam/code/.devcontainer
 sam/code/registScore
 sam/code/getScore
