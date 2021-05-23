@@ -20,12 +20,6 @@ import (
 	"golang.org/x/net/html/charset"
 )
 
-type AssetDailyRes struct {
-	AssetCode string `json:"AssetCode"`
-	Date      string `json:"Date"`
-	Price     int    `json:"Price"`
-}
-
 type AssetDaily struct {
 	AssetCode string
 	Date      string
@@ -44,6 +38,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		date           string
 		err            error
 	)
+
 	// パス・クエリパラメータ取得
 	assetCode = request.PathParameters["assetCode"]
 	date = request.QueryStringParameters["date"]
@@ -151,10 +146,10 @@ func registerAssetDailyData(table dynamo.Table, assetDailyData AssetDaily) error
 // 資産価値データ取得
 func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, date string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
-	filter := table.Scan()
-	if assetCode != "" {
-		filter = filter.Filter("'AssetCode' = ?", assetCode)
+	if assetCode == "" {
+		return nil, nil
 	}
+	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
 	if date != "" {
 		filter = filter.Filter("'Date' = ?", date)
 	}
@@ -162,9 +157,23 @@ func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, d
 	return assetDailyData, err
 }
 
+// 資産価値データ取得
+func getAssetDailyDataByAssetCodeAndAcquisition(table dynamo.Table, assetCode string, acquisition int16) ([]AssetDaily, error) {
+	var assetDailyData []AssetDaily
+	if assetCode == "" {
+		return nil, nil
+	}
+	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
+	if acquisition != 0 {
+		filter = filter.Filter("'Acquisition' > ?", 0)
+	}
+	err := filter.All(&assetDailyData)
+	return assetDailyData, err
+}
+
 // Dynamodb接続設定
 func connectDynamodb(table string) dynamo.Table {
-	// Endpoint setting(Local Dynamodb)
+	// Endpoint設定(Local Dynamodb接続用)
 	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
 	// Dynamodb接続設定
 	session := session.Must(session.NewSession())
