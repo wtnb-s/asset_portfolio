@@ -3,6 +3,10 @@ Transform: AWS::Serverless-2016-10-31
 Description: >
   SAM for asset portfolio
 
+Parameters:
+  ProductionURL:
+    Type: String
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -10,7 +14,7 @@ Globals:
     Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
       Variables:
         DYNAMODB_ENDPOINT: ''
-        ALLOW_ORIGIN: ''
+        ALLOW_ORIGIN: !Ref ProductionURL
   Api:
     Cors:
       AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
@@ -68,7 +72,7 @@ Resources:
       Dockerfile: Dockerfile
       DockerBuildArgs: { BUILD_TARGET: getAssetMaster }
 
-  DynamoDBTable:
+  DynamoDBAssetDaily:
     Type: 'AWS::DynamoDB::Table'
     Properties:
       TableName: asset_daily
@@ -88,6 +92,26 @@ Resources:
         - KeyType: RANGE
           AttributeName: Date
 
+  DynamoDBAssetMaster:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: asset_master
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      ProvisionedThroughput:
+        WriteCapacityUnits: 1
+        ReadCapacityUnits: 1
+      AttributeDefinitions:
+        - AttributeName: AssetCode
+          AttributeType: S
+        - AttributeName: CategoryId
+          AttributeType: S
+      KeySchema:
+        - KeyType: HASH
+          AttributeName: AssetCode
+        - KeyType: RANGE
+          AttributeName: CategoryId
+
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
@@ -101,7 +125,7 @@ Outputs:
 
   getAssetMasterAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Get Asset Master Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/{assetCode}/'
   getAssetMasterFunction:
     Description: 'Get Asset Master Lambda Function ARN'
     Value: !GetAtt getAssetMasterFunction.Arn

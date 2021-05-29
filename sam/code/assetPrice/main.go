@@ -57,7 +57,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	jsonBytes, _ := json.Marshal(assetDailyData)
 	return events.APIGatewayProxyResponse{
 		Headers: map[string]string{
-			"Access-Control-Allow-Origin":      "http://localhost:3001",
+			"Access-Control-Allow-Origin":      os.Getenv("ALLOW_ORIGIN"),
 			"Access-Control-Allow-Headers":     "origin,Accept,Authorization,Content-Type",
 			"Access-Control-Allow-Credentials": "true",
 			"Content-Type":                     "application/json",

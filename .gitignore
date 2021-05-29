@@ -1,6 +1,7 @@
 .DS_Store
 設計.txt
 sam/.aws-sam
+sam/samconfig.toml
 sam/template.yaml.sample
 sam/test/env.json
 sam/code/.devcontainer
