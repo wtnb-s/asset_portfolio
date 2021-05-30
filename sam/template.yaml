@@ -50,18 +50,23 @@ Resources:
       Dockerfile: Dockerfile
       DockerBuildArgs: { BUILD_TARGET: assetPrice }
 
-  getAssetMasterFunction:
+  AssetMasterFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
 
-      FunctionName: 'getAssetMaster'
+      FunctionName: 'AssetMaster'
       Policies: AmazonDynamoDBReadOnlyAccess
       Events:
-        CatchAll:
+        RegistAssetMaster:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
             Path: /asset/
+            Method: POST
+        GetAssetMaster:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /asset/{assetCode}/
             Method: GET
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
@@ -70,7 +75,7 @@ Resources:
       DockerTag: go1.x-v1
       DockerContext: ./
       Dockerfile: Dockerfile
-      DockerBuildArgs: { BUILD_TARGET: getAssetMaster }
+      DockerBuildArgs: { BUILD_TARGET: assetMaster }
 
   DynamoDBAssetDaily:
     Type: 'AWS::DynamoDB::Table'
@@ -117,15 +122,15 @@ Outputs:
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   AssetPriceAPI:
-    Description: 'API Gateway endpoint URL for Prod environment for Regist Asset Price Function'
+    Description: 'API Gateway endpoint URL for Prod environment for Asset Price Function'
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
   AssetPriceFunction:
     Description: 'Asset Price Lambda Function ARN'
     Value: !GetAtt AssetPriceFunction.Arn
 
-  getAssetMasterAPI:
-    Description: 'API Gateway endpoint URL for Prod environment for Get Asset Master Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/{assetCode}/'
-  getAssetMasterFunction:
-    Description: 'Get Asset Master Lambda Function ARN'
-    Value: !GetAtt getAssetMasterFunction.Arn
+  AssetMasterAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Asset Master Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
+  AssetMasterFunction:
+    Description: 'Asset Master Lambda Function ARN'
+    Value: !GetAtt AssetMasterFunction.Arn
