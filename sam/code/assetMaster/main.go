@@ -91,13 +91,13 @@ func postHandler(assetMasterReq *AssetMasterReq) (AssetMaster, error) {
 	assetMasterData := AssetMaster{AssetCode: assetCode, CategoryId: assetCategoryId, Type: assetType, Name: assetName}
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")
-	// 資産価値データ登録
+	// 資産データ登録
 	err := registerAssetMasterData(table, assetMasterData)
 
 	return assetMasterData, err
 }
 
-// 資産価値データ登録
+// 資産データ登録
 func registerAssetMasterData(table dynamo.Table, assetMasterData AssetMaster) error {
 	err := table.Put(assetMasterData).Run()
 	if err != nil {
@@ -106,7 +106,7 @@ func registerAssetMasterData(table dynamo.Table, assetMasterData AssetMaster) er
 	return nil
 }
 
-// 資産価値データ取得
+// 資産データ取得
 func getAssetMasterDataByAssetCodeAndCategoryId(table dynamo.Table, assetCode string, categoryId string) ([]AssetMaster, error) {
 	var assetMasterData []AssetMaster
 	if assetCode == "" {
