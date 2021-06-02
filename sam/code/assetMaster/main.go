@@ -76,7 +76,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 func getHandler(assetCode string, categoryId string) ([]AssetMaster, error) {
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")
-	// 資産価値データ取得
+	// 資産データ取得
 	assetDailyData, err := getAssetMasterDataByAssetCodeAndCategoryId(table, assetCode, categoryId)
 	return assetDailyData, err
 }
