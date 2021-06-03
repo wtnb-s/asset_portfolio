@@ -48,7 +48,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	case "POST":
 		assetDailyData, err = postHandler(assetCode, fromDate, toDate)
 	case "GET":
-		assetDailyData, err = getHandler(assetCode, fromDate)
+		assetDailyData, err = getHandler(assetCode, fromDate, toDate)
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
@@ -118,11 +118,11 @@ func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, 
 }
 
 // データ登録
-func getHandler(assetCode string, date string) ([]AssetDaily, error) {
+func getHandler(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
 	// Dynamodb接続
 	table := connectDynamodb("asset_daily")
 	// 資産価値データ取得
-	assetDailyData, err := getAssetDailyDataByAssetCodeAndDate(table, assetCode, date)
+	assetDailyData, err := getAssetDailyDataByAssetCodeAndDate(table, assetCode, fromDate, toDate)
 	return assetDailyData, err
 }
 
@@ -136,14 +136,15 @@ func registerAssetDailyData(table dynamo.Table, assetDailyData AssetDaily) error
 }
 
 // 資産価値データ取得
-func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, date string) ([]AssetDaily, error) {
+func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
 	if assetCode == "" {
 		return nil, nil
 	}
 	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
-	if date != "" {
-		filter = filter.Filter("'Date' = ?", date)
+	if fromDate != "" && toDate != "" {
+		filter = filter.Filter("'Date' > ?", fromDate)
+		filter = filter.Filter("'Date' < ?", toDate)
 	}
 	err := filter.All(&assetDailyData)
 	return assetDailyData, err
