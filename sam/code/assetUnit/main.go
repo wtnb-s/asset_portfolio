@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"math"
 	"os"
 
@@ -95,16 +94,13 @@ func getHandler(assetCode string, date string) ([]AssetUnit, error) {
 
 // データ登録
 func postHandler(assetUnitReq *AssetUnitReq) (AssetUnit, error) {
-	fmt.Println(assetUnitReq)
 	assetCode := assetUnitReq.AssetCode
 	date := assetUnitReq.Date
 	amount := assetUnitReq.Amount
 
 	// price からもamountを計算出来るようにする
 	price, _ := getPrice(assetCode, date)
-	fmt.Println(price)
 	unit := math.Round(float64(amount) / float64(price) * 10000)
-	fmt.Println(unit)
 
 	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit)}
 	// Dynamodb接続
