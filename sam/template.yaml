@@ -22,6 +22,33 @@ Globals:
       AllowOrigin: "'*'"
 
 Resources:
+  AssetMasterFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      PackageType: Image
+
+      FunctionName: 'AssetMaster'
+      Policies: AmazonDynamoDBReadOnlyAccess
+      Events:
+        RegistAssetMaster:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /asset/
+            Method: POST
+        GetAssetMaster:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /asset/{assetCode}/
+            Method: GET
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          PARAM1: VALUE
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./
+      Dockerfile: Dockerfile
+      DockerBuildArgs: { BUILD_TARGET: assetMaster }
+
   AssetPriceFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
@@ -50,23 +77,23 @@ Resources:
       Dockerfile: Dockerfile
       DockerBuildArgs: { BUILD_TARGET: assetPrice }
 
-  AssetMasterFunction:
+  AssetUnitFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
 
-      FunctionName: 'AssetMaster'
+      FunctionName: 'AssetUnit'
       Policies: AmazonDynamoDBReadOnlyAccess
       Events:
         RegistAssetMaster:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /asset/
+            Path: /unit/
             Method: POST
         GetAssetMaster:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /asset/{assetCode}/
+            Path: /unit/{assetCode}/
             Method: GET
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
@@ -75,27 +102,7 @@ Resources:
       DockerTag: go1.x-v1
       DockerContext: ./
       Dockerfile: Dockerfile
-      DockerBuildArgs: { BUILD_TARGET: assetMaster }
-
-  DynamoDBAssetDaily:
-    Type: 'AWS::DynamoDB::Table'
-    Properties:
-      TableName: asset_daily
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-      ProvisionedThroughput:
-        WriteCapacityUnits: 1
-        ReadCapacityUnits: 1
-      AttributeDefinitions:
-        - AttributeName: AssetCode
-          AttributeType: S
-        - AttributeName: Date
-          AttributeType: S
-      KeySchema:
-        - KeyType: HASH
-          AttributeName: AssetCode
-        - KeyType: RANGE
-          AttributeName: Date
+      DockerBuildArgs: { BUILD_TARGET: assetUnit }
 
   DynamoDBAssetMaster:
     Type: 'AWS::DynamoDB::Table'
@@ -117,10 +124,77 @@ Resources:
         - KeyType: RANGE
           AttributeName: CategoryId
 
+  DynamoDBAssetDaily:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: asset_daily
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      ProvisionedThroughput:
+        WriteCapacityUnits: 1
+        ReadCapacityUnits: 1
+      AttributeDefinitions:
+        - AttributeName: AssetCode
+          AttributeType: S
+        - AttributeName: Date
+          AttributeType: S
+      KeySchema:
+        - KeyType: HASH
+          AttributeName: AssetCode
+        - KeyType: RANGE
+          AttributeName: Date
+
+  DynamoDBAssetUnit:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: asset_unit
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      ProvisionedThroughput:
+        WriteCapacityUnits: 1
+        ReadCapacityUnits: 1
+      AttributeDefinitions:
+        - AttributeName: AssetCode
+          AttributeType: S
+        - AttributeName: Date
+          AttributeType: S
+      KeySchema:
+        - KeyType: HASH
+          AttributeName: AssetCode
+        - KeyType: RANGE
+          AttributeName: Date
+
+  DynamoDBAssetAmount:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      TableName: asset_amount
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+      ProvisionedThroughput:
+        WriteCapacityUnits: 1
+        ReadCapacityUnits: 1
+      AttributeDefinitions:
+        - AttributeName: AssetCode
+          AttributeType: S
+        - AttributeName: Date
+          AttributeType: S
+      KeySchema:
+        - KeyType: HASH
+          AttributeName: AssetCode
+        - KeyType: RANGE
+          AttributeName: Date
+
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
+  AssetMasterAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Asset Master Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
+  AssetMasterFunction:
+    Description: 'Asset Master Lambda Function ARN'
+    Value: !GetAtt AssetMasterFunction.Arn
+
   AssetPriceAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Asset Price Function'
     Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
@@ -128,9 +202,9 @@ Outputs:
     Description: 'Asset Price Lambda Function ARN'
     Value: !GetAtt AssetPriceFunction.Arn
 
-  AssetMasterAPI:
-    Description: 'API Gateway endpoint URL for Prod environment for Asset Master Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
-  AssetMasterFunction:
-    Description: 'Asset Master Lambda Function ARN'
-    Value: !GetAtt AssetMasterFunction.Arn
+  AssetUnitAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Asset Unit Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/unit/'
+  AssetUnitFunction:
+    Description: 'Asset Unit Lambda Function ARN'
+    Value: !GetAtt AssetUnitFunction.Arn

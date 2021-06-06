@@ -77,8 +77,8 @@ func getHandler(assetCode string, categoryId string) ([]AssetMaster, error) {
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")
 	// 資産データ取得
-	assetDailyData, err := getAssetMasterDataByAssetCodeAndCategoryId(table, assetCode, categoryId)
-	return assetDailyData, err
+	assetMasterData, err := getAssetMasterDataByAssetCodeAndCategoryId(table, assetCode, categoryId)
+	return assetMasterData, err
 }
 
 // データ登録

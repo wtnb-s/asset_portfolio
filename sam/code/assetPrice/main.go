@@ -106,7 +106,7 @@ func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, 
 			assetDailyData = AssetDaily{AssetCode: assetCode, Date: date, Price: price}
 
 			// 資産価値データ登録
-			err := registerAssetDailyData(table, assetDailyData)
+			err := table.Put(assetDailyData).Run()
 			if err != nil {
 				return assetDailyData, err
 			}
@@ -119,25 +119,10 @@ func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, 
 
 // データ登録
 func getHandler(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
+	var assetDailyData []AssetDaily
 	// Dynamodb接続
 	table := connectDynamodb("asset_daily")
 	// 資産価値データ取得
-	assetDailyData, err := getAssetDailyDataByAssetCodeAndDate(table, assetCode, fromDate, toDate)
-	return assetDailyData, err
-}
-
-// 資産価値データ登録
-func registerAssetDailyData(table dynamo.Table, assetDailyData AssetDaily) error {
-	err := table.Put(assetDailyData).Run()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-// 資産価値データ取得
-func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
-	var assetDailyData []AssetDaily
 	if assetCode == "" {
 		return nil, nil
 	}
@@ -147,20 +132,7 @@ func getAssetDailyDataByAssetCodeAndDate(table dynamo.Table, assetCode string, f
 		filter = filter.Filter("'Date' < ?", toDate)
 	}
 	err := filter.All(&assetDailyData)
-	return assetDailyData, err
-}
 
-// 資産価値データ取得
-func getAssetDailyDataByAssetCodeAndAcquisition(table dynamo.Table, assetCode string, acquisition int16) ([]AssetDaily, error) {
-	var assetDailyData []AssetDaily
-	if assetCode == "" {
-		return nil, nil
-	}
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
-	if acquisition != 0 {
-		filter = filter.Filter("'Acquisition' > ?", 0)
-	}
-	err := filter.All(&assetDailyData)
 	return assetDailyData, err
 }
 
