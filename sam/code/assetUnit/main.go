@@ -16,13 +16,14 @@ type AssetUnit struct {
 	AssetCode string
 	Date      string
 	Unit      int
+	Amount    int
 }
 
 type AssetUnitReq struct {
 	AssetCode string `json:"AssetCode"`
 	Date      string `json:"Date"`
-	Amount    int    `json:"Amount"`
 	Unit      int    `json:"Unit"`
+	Amount    int    `json:"Amount"`
 }
 
 type AssetDaily struct {
@@ -97,16 +98,21 @@ func getHandler(assetCode string, date string) ([]AssetUnit, error) {
 func postHandler(assetUnitReq *AssetUnitReq) (AssetUnit, error) {
 	assetCode := assetUnitReq.AssetCode
 	date := assetUnitReq.Date
-	amount := assetUnitReq.Amount
+	amount := float64(assetUnitReq.Amount)
 	unit := float64(assetUnitReq.Unit)
 
-	// unit（口数）が指定されていない場合、購入金額から口数を計算する
-	if unit == 0 {
-		price, _ := getPrice(assetCode, date)
+	// 対象日の基準価格を取得
+	price, _ := getPrice(assetCode, date)
+	// 金額を引数に口数を計算する
+	if amount != 0 {
 		unit = math.Round(float64(amount) / float64(price) * 10000)
 	}
+	// 口数を引数に金額を計算する
+	if unit != 0 {
+		amount = math.Round(float64(price) * float64(unit) / 10000)
+	}
 
-	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit)}
+	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)}
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
 	// 資産データ登録
