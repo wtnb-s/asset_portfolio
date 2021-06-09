@@ -22,6 +22,7 @@ type AssetUnitReq struct {
 	AssetCode string `json:"AssetCode"`
 	Date      string `json:"Date"`
 	Amount    int    `json:"Amount"`
+	Unit      int    `json:"Unit"`
 }
 
 type AssetDaily struct {
@@ -97,10 +98,13 @@ func postHandler(assetUnitReq *AssetUnitReq) (AssetUnit, error) {
 	assetCode := assetUnitReq.AssetCode
 	date := assetUnitReq.Date
 	amount := assetUnitReq.Amount
+	unit := float64(assetUnitReq.Unit)
 
-	// price からもamountを計算出来るようにする
-	price, _ := getPrice(assetCode, date)
-	unit := math.Round(float64(amount) / float64(price) * 10000)
+	// unit（口数）が指定されていない場合、購入金額から口数を計算する
+	if unit == 0 {
+		price, _ := getPrice(assetCode, date)
+		unit = math.Round(float64(amount) / float64(price) * 10000)
+	}
 
 	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit)}
 	// Dynamodb接続
