@@ -164,26 +164,6 @@ Resources:
         - KeyType: RANGE
           AttributeName: Date
 
-  DynamoDBAssetAmount:
-    Type: 'AWS::DynamoDB::Table'
-    Properties:
-      TableName: asset_amount
-      StreamSpecification:
-        StreamViewType: NEW_AND_OLD_IMAGES
-      ProvisionedThroughput:
-        WriteCapacityUnits: 1
-        ReadCapacityUnits: 1
-      AttributeDefinitions:
-        - AttributeName: AssetCode
-          AttributeType: S
-        - AttributeName: Date
-          AttributeType: S
-      KeySchema:
-        - KeyType: HASH
-          AttributeName: AssetCode
-        - KeyType: RANGE
-          AttributeName: Date
-
 Outputs:
   # ServerlessRestApi is an implicit API created out of Events key under Serverless::Function
   # Find out more about other implicit resources you can reference within SAM
