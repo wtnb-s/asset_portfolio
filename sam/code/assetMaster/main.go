@@ -72,7 +72,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	}, nil
 }
 
-// データ登録
+// データ取得
 func getHandler(assetCode string, categoryId string) ([]AssetMaster, error) {
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")

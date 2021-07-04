@@ -117,7 +117,7 @@ func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, 
 	return assetDailyData, nil
 }
 
-// データ登録
+// データ取得
 func getHandler(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
 	// Dynamodb接続
