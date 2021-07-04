@@ -58,7 +58,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	return events.APIGatewayProxyResponse{
 		Headers: map[string]string{
 			"Access-Control-Allow-Origin":      os.Getenv("ALLOW_ORIGIN"),
-			"Access-Control-Allow-Headers":     "origin,Accept,Authorization,Content-Type",
+			"Access-Control-Allow-Headers":     "X-Requested-With, Origin, X-Csrftoken, Content-Type, Accept",
 			"Access-Control-Allow-Credentials": "true",
 			"Content-Type":                     "application/json",
 		},
