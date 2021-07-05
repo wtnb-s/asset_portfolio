@@ -51,7 +51,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		assetMasterData, err = postHandler(assetMasterReq)
 	case "GET":
 		// パス・クエリパラメータ取得
-		assetCode = request.PathParameters["assetCode"]
+		assetCode = request.QueryStringParameters["assetCode"]
 		categoryId = request.QueryStringParameters["date"]
 		assetMasterData, err = getHandler(assetCode, categoryId)
 	}
@@ -109,10 +109,10 @@ func registerAssetMasterData(table dynamo.Table, assetMasterData AssetMaster) er
 // 資産データ取得
 func getAssetMasterDataByAssetCodeAndCategoryId(table dynamo.Table, assetCode string, categoryId string) ([]AssetMaster, error) {
 	var assetMasterData []AssetMaster
-	if assetCode == "" {
-		return nil, nil
+	filter := table.Scan()
+	if assetCode != "" {
+		filter = filter.Filter("'AssetCode' = ?", assetCode)
 	}
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
 	if categoryId != "" {
 		filter = filter.Filter("'CategoryId' = ?", categoryId)
 	}
