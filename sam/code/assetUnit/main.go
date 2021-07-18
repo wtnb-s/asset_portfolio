@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"math"
 	"os"
-	"reflect"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -19,7 +18,6 @@ type AssetUnit struct {
 	Unit      int
 	Amount    int
 }
-
 type AssetUnitReq struct {
 	AssetCode string `json:"AssetCode"`
 	Date      string `json:"Date"`
@@ -27,6 +25,12 @@ type AssetUnitReq struct {
 	Amount    int    `json:"Amount"`
 }
 
+type AssetMaster struct {
+	AssetCode  string
+	CategoryId string
+	Name       string
+	Type       int
+}
 type AssetDaily struct {
 	AssetCode string
 	Date      string
@@ -39,10 +43,9 @@ func main() {
 
 // メインハンドラー
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var (
-		assetUnitData []AssetUnit
-		err           error
-	)
+	var assetUnitData []AssetUnit
+	var err error
+	unitDataList := make(map[string]map[string]interface{})
 
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
@@ -54,23 +57,46 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		if err := json.Unmarshal(jsonBytes, assetUnitReq); err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
-		assetUnitData, err = postHandler(assetUnitReq)
+		_, err = postHandler(assetUnitReq)
 	case "GET":
 		// パス・クエリパラメータ取得
 		assetCode := request.PathParameters["assetCode"]
 		date := request.QueryStringParameters["date"]
 		assetUnitData, err = getHandler(assetCode, date)
+
+		// AssetCode毎にリストを格納
+		assetUnitDataByAssetCode := make(map[string][]AssetUnit)
+		for _, data := range assetUnitData {
+			assetUnitDataByAssetCode[data.AssetCode] = append(assetUnitDataByAssetCode[data.AssetCode], data)
+		}
+		// 保持している資産の株数と平均取得単価を算出
+		for assetCode, dataList := range assetUnitDataByAssetCode {
+			sumUnit := 0
+			sumAmount := 0
+			for _, data := range dataList {
+				sumUnit = sumUnit + data.Unit
+				sumAmount = sumAmount + data.Amount
+			}
+
+			// 対象日の基準価格を取得
+			date := "2021-06-01"
+			price, _ := getPrice(assetCode, date)
+			// 資産名取得
+			assetName, _ := getAssetName(assetCode)
+			// 口数を引数に金額を計算する
+			unitDataList[assetCode] = make(map[string]interface{})
+			unitDataList[assetCode]["assetName"] = assetName
+			unitDataList[assetCode]["sumUnit"] = sumUnit
+			unitDataList[assetCode]["acquisitionPrice"] = sumAmount
+			unitDataList[assetCode]["presentValue"] = int(math.Round(float64(price) * float64(sumUnit) / 10000))
+			unitDataList[assetCode]["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
+		}
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
 	}
-	// AssetCode毎にリストを格納
-	assetUnitDataByAssetCode := make(map[string][]AssetUnit)
-	for _, data := range assetUnitData {
-		assetUnitDataByAssetCode[data.AssetCode] = append(assetUnitDataByAssetCode[data.AssetCode], data)
-	}
 
-	jsonBytes, _ := json.Marshal(assetUnitDataByAssetCode)
+	jsonBytes, _ := json.Marshal(unitDataList)
 	return events.APIGatewayProxyResponse{
 		Headers: map[string]string{
 			"Access-Control-Allow-Origin":      os.Getenv("ALLOW_ORIGIN"),
@@ -129,6 +155,7 @@ func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
 	return assetAmount, err
 }
 
+// 指定したコード・日付の価格取得
 func getPrice(assetCode string, date string) (int, error) {
 	var assetDailyData AssetDaily
 	// Dynamodb接続
@@ -143,6 +170,17 @@ func getPrice(assetCode string, date string) (int, error) {
 	return price, err
 }
 
+// 指定したコードの資産名取得
+func getAssetName(assetCode string) (string, error) {
+	var assetMasterData []AssetMaster
+	// Dynamodb接続
+	table := connectDynamodb("asset_master")
+	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
+	err := filter.All(&assetMasterData)
+	name := assetMasterData[0].Name
+	return name, err
+}
+
 // Dynamodb接続設定
 func connectDynamodb(table string) dynamo.Table {
 	// Endpoint設定(Local Dynamodb接続用)
@@ -155,23 +193,4 @@ func connectDynamodb(table string) dynamo.Table {
 	}
 	db := dynamo.New(session, config)
 	return db.Table(table)
-}
-
-// 構造体を連想配列に変換
-func structToMap(data interface{}) []map[string]interface{} {
-	valueList := reflect.ValueOf(data)
-	arraySize := valueList.Len()
-	mapDataList := make([]map[string]interface{}, 0, arraySize)
-
-	for arrayIndex := 0; arrayIndex < arraySize; arrayIndex++ {
-		data := valueList.Index(arrayIndex)
-		dataType := data.Type()
-		// マップに代入
-		mapData := make(map[string]interface{})
-		for mapIndex := 0; mapIndex < dataType.NumField(); mapIndex++ {
-			mapData[dataType.Field(mapIndex).Name] = data.Field(mapIndex).Interface()
-		}
-		mapDataList = append(mapDataList, mapData)
-	}
-	return mapDataList
 }
