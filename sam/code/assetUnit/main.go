@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"reflect"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -39,7 +40,7 @@ func main() {
 // メインハンドラー
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var (
-		assetUnitData interface{}
+		assetUnitData []AssetUnit
 		err           error
 	)
 
@@ -63,8 +64,13 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
 	}
+	// AssetCode毎にリストを格納
+	assetUnitDataByAssetCode := make(map[string][]AssetUnit)
+	for _, data := range assetUnitData {
+		assetUnitDataByAssetCode[data.AssetCode] = append(assetUnitDataByAssetCode[data.AssetCode], data)
+	}
 
-	jsonBytes, _ := json.Marshal(assetUnitData)
+	jsonBytes, _ := json.Marshal(assetUnitDataByAssetCode)
 	return events.APIGatewayProxyResponse{
 		Headers: map[string]string{
 			"Access-Control-Allow-Origin":      os.Getenv("ALLOW_ORIGIN"),
@@ -82,11 +88,11 @@ func getHandler(assetCode string, date string) ([]AssetUnit, error) {
 	var assetUnit []AssetUnit
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
-	// 資産データ取得
-	if assetCode == "" {
-		return nil, nil
+	filter := table.Scan()
+	// 取得条件設定
+	if assetCode != "" {
+		filter = filter.Filter("'AssetCode' = ?", assetCode)
 	}
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
 	if date != "" {
 		filter = filter.Filter("'Date' = ?", date)
 	}
@@ -95,7 +101,7 @@ func getHandler(assetCode string, date string) ([]AssetUnit, error) {
 }
 
 // データ登録
-func postHandler(assetUnitReq *AssetUnitReq) (AssetUnit, error) {
+func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
 	assetCode := assetUnitReq.AssetCode
 	date := assetUnitReq.Date
 	amount := float64(assetUnitReq.Amount)
@@ -112,7 +118,9 @@ func postHandler(assetUnitReq *AssetUnitReq) (AssetUnit, error) {
 		amount = math.Round(float64(price) * float64(unit) / 10000)
 	}
 
-	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)}
+	assetAmount := []AssetUnit{
+		{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)},
+	}
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
 	// 資産データ登録
@@ -147,4 +155,23 @@ func connectDynamodb(table string) dynamo.Table {
 	}
 	db := dynamo.New(session, config)
 	return db.Table(table)
+}
+
+// 構造体を連想配列に変換
+func structToMap(data interface{}) []map[string]interface{} {
+	valueList := reflect.ValueOf(data)
+	arraySize := valueList.Len()
+	mapDataList := make([]map[string]interface{}, 0, arraySize)
+
+	for arrayIndex := 0; arrayIndex < arraySize; arrayIndex++ {
+		data := valueList.Index(arrayIndex)
+		dataType := data.Type()
+		// マップに代入
+		mapData := make(map[string]interface{})
+		for mapIndex := 0; mapIndex < dataType.NumField(); mapIndex++ {
+			mapData[dataType.Field(mapIndex).Name] = data.Field(mapIndex).Interface()
+		}
+		mapDataList = append(mapDataList, mapData)
+	}
+	return mapDataList
 }
