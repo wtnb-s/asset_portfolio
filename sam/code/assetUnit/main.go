@@ -77,19 +77,25 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				sumUnit = sumUnit + data.Unit
 				sumAmount = sumAmount + data.Amount
 			}
-
 			// 対象日の基準価格を取得
 			date := "2021-06-01"
 			price, _ := getPrice(assetCode, date)
 			// 資産名取得
 			assetName, _ := getAssetName(assetCode)
-			// 口数を引数に金額を計算する
-			unitDataList[assetCode] = make(map[string]interface{})
-			unitDataList[assetCode]["assetName"] = assetName
-			unitDataList[assetCode]["sumUnit"] = sumUnit
-			unitDataList[assetCode]["acquisitionPrice"] = sumAmount
-			unitDataList[assetCode]["presentValue"] = int(math.Round(float64(price) * float64(sumUnit) / 10000))
-			unitDataList[assetCode]["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
+
+			unitData := make(map[string]interface{})
+			// 資産名
+			unitData["assetName"] = assetName
+			// 保持株数
+			unitData["sumUnit"] = sumUnit
+			// 合計購入価格
+			unitData["acquisitionPrice"] = sumAmount
+			// 現在価値
+			unitData["presentValue"] = int(math.Round(float64(price) * float64(sumUnit) / 10000))
+			// 平均購入単価
+			unitData["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
+			// 資産データをリストに追加
+			unitDataList[assetCode] = unitData
 		}
 	}
 	if err != nil {
