@@ -77,11 +77,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				sumUnit = sumUnit + data.Unit
 				sumAmount = sumAmount + data.Amount
 			}
-			// 対象日の基準価格を取得
-			date := "2021-06-01"
-			price, _ := getPrice(assetCode, date)
 			// 資産名取得
 			assetName, _ := getAssetName(assetCode)
+			// 指定した資産の最新の価格を取得
+			price, _ := getPriceLatestDateByAssetCode(assetCode)
 
 			unitData := make(map[string]interface{})
 			// 資産名
@@ -94,6 +93,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			unitData["presentValue"] = int(math.Round(float64(price) * float64(sumUnit) / 10000))
 			// 平均購入単価
 			unitData["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
+			// 過去１００日間の資産価値推移
+
+			// 過去１００日間の損益推移
+
 			// 資産データをリストに追加
 			unitDataList[assetCode] = unitData
 		}
@@ -140,7 +143,7 @@ func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
 	unit := float64(assetUnitReq.Unit)
 
 	// 対象日の基準価格を取得
-	price, _ := getPrice(assetCode, date)
+	price, _ := getPriceByAssetCodeAndData(assetCode, date)
 	// 金額を引数に口数を計算する
 	if amount != 0 {
 		unit = math.Round(float64(amount) / float64(price) * 10000)
@@ -161,8 +164,8 @@ func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
 	return assetAmount, err
 }
 
-// 指定したコード・日付の価格取得
-func getPrice(assetCode string, date string) (int, error) {
+// 指定した資産コードと日付の価格取得
+func getPriceByAssetCodeAndData(assetCode string, date string) (int, error) {
 	var assetDailyData AssetDaily
 	// Dynamodb接続
 	table := connectDynamodb("asset_daily")
@@ -176,13 +179,27 @@ func getPrice(assetCode string, date string) (int, error) {
 	return price, err
 }
 
+// 指定した資産コードの最新の価格取得
+func getPriceLatestDateByAssetCode(assetCode string) (int, error) {
+	var assetDailyData []AssetDaily
+	// Dynamodb接続
+	table := connectDynamodb("asset_daily")
+	// 資産価値データ取得
+	if assetCode == "" {
+		return 0, nil
+	}
+	err := table.Get("AssetCode", assetCode).All(&assetDailyData)
+	price := assetDailyData[len(assetDailyData)-1].Price
+
+	return price, err
+}
+
 // 指定したコードの資産名取得
 func getAssetName(assetCode string) (string, error) {
 	var assetMasterData []AssetMaster
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
-	err := filter.All(&assetMasterData)
+	err := table.Get("AssetCode", assetCode).All(&assetMasterData)
 	name := assetMasterData[0].Name
 	return name, err
 }
