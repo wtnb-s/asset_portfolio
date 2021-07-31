@@ -33,10 +33,9 @@ func main() {
 
 // メインハンドラー
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var (
-		assetDailyData interface{}
-		err            error
-	)
+	// 変数初期化
+	var assetDailyData []AssetDaily
+	var err error
 
 	// パス・クエリパラメータ取得
 	assetCode := request.PathParameters["assetCode"]
@@ -46,7 +45,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
 	case "POST":
-		assetDailyData, err = postHandler(assetCode, fromDate, toDate)
+		err = postHandler(assetCode, fromDate, toDate)
 	case "GET":
 		assetDailyData, err = getHandler(assetCode, fromDate, toDate)
 	}
@@ -68,7 +67,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 }
 
 // データ登録
-func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, error) {
+func postHandler(assetCode string, fromDate string, toDate string) error {
 	var assetDailyData AssetDaily
 
 	// 日付設定
@@ -108,13 +107,13 @@ func postHandler(assetCode string, fromDate string, toDate string) (AssetDaily, 
 			// 資産価値データ登録
 			err := table.Put(assetDailyData).Run()
 			if err != nil {
-				return assetDailyData, err
+				return err
 			}
 		}
 		// 間隔を開けて取得する
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Second * 5)
 	}
-	return assetDailyData, nil
+	return nil
 }
 
 // データ取得

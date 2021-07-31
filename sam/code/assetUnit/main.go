@@ -36,6 +36,11 @@ type AssetDaily struct {
 	Date      string
 	Price     int
 }
+type AssetValue struct {
+	Date   string
+	Price  int
+	Profit int
+}
 
 func main() {
 	lambda.Start(handler)
@@ -43,6 +48,7 @@ func main() {
 
 // メインハンドラー
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
+	// 変数初期化
 	var assetUnitData []AssetUnit
 	var err error
 	unitDataList := make(map[string]map[string]interface{})
@@ -57,7 +63,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		if err := json.Unmarshal(jsonBytes, assetUnitReq); err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
-		_, err = postHandler(assetUnitReq)
+		err = postHandler(assetUnitReq)
 	case "GET":
 		// パス・クエリパラメータ取得
 		assetCode := request.PathParameters["assetCode"]
@@ -80,7 +86,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 資産名取得
 			assetName, _ := getAssetName(assetCode)
 			// 指定した資産の最新の価格を取得
-			price, _ := getPriceLatestDateByAssetCode(assetCode)
+			priceList, _ := getPriceLatest100DaysByAssetCode(assetCode)
 
 			unitData := make(map[string]interface{})
 			// 資産名
@@ -90,12 +96,19 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 合計購入価格
 			unitData["acquisitionPrice"] = sumAmount
 			// 現在価値
-			unitData["presentValue"] = int(math.Round(float64(price) * float64(sumUnit) / 10000))
+			currentPrice := priceList[len(priceList)-1].Price
+			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / 10000))
 			// 平均購入単価
 			unitData["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
-			// 過去１００日間の資産価値推移
 
-			// 過去１００日間の損益推移
+			// 過去１００日間の資産価値と損益の推移
+			var pastAssetValueDataList []AssetValue
+			for _, data := range priceList {
+				pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / 10000))
+				pastAssetValueData := AssetValue{Date: data.Date, Price: pastAssetValue, Profit: pastAssetValue - sumAmount}
+				pastAssetValueDataList = append(pastAssetValueDataList, pastAssetValueData)
+			}
+			unitData["AssetValueList"] = pastAssetValueDataList
 
 			// 資産データをリストに追加
 			unitDataList[assetCode] = unitData
@@ -136,7 +149,7 @@ func getHandler(assetCode string, date string) ([]AssetUnit, error) {
 }
 
 // データ登録
-func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
+func postHandler(assetUnitReq *AssetUnitReq) error {
 	assetCode := assetUnitReq.AssetCode
 	date := assetUnitReq.Date
 	amount := float64(assetUnitReq.Amount)
@@ -153,15 +166,13 @@ func postHandler(assetUnitReq *AssetUnitReq) ([]AssetUnit, error) {
 		amount = math.Round(float64(price) * float64(unit) / 10000)
 	}
 
-	assetAmount := []AssetUnit{
-		{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)},
-	}
+	assetAmount := AssetUnit{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)}
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
 	// 資産データ登録
 	err := table.Put(assetAmount).Run()
 
-	return assetAmount, err
+	return err
 }
 
 // 指定した資産コードと日付の価格取得
@@ -180,18 +191,18 @@ func getPriceByAssetCodeAndData(assetCode string, date string) (int, error) {
 }
 
 // 指定した資産コードの最新の価格取得
-func getPriceLatestDateByAssetCode(assetCode string) (int, error) {
+func getPriceLatest100DaysByAssetCode(assetCode string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
 	// Dynamodb接続
 	table := connectDynamodb("asset_daily")
 	// 資産価値データ取得
 	if assetCode == "" {
-		return 0, nil
+		return assetDailyData, nil
 	}
 	err := table.Get("AssetCode", assetCode).All(&assetDailyData)
-	price := assetDailyData[len(assetDailyData)-1].Price
+	priceList := assetDailyData[len(assetDailyData)-101 : len(assetDailyData)-1]
 
-	return price, err
+	return priceList, err
 }
 
 // 指定したコードの資産名取得
@@ -201,6 +212,7 @@ func getAssetName(assetCode string) (string, error) {
 	table := connectDynamodb("asset_master")
 	err := table.Get("AssetCode", assetCode).All(&assetMasterData)
 	name := assetMasterData[0].Name
+
 	return name, err
 }
 

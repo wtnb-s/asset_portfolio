@@ -31,12 +31,10 @@ func main() {
 
 // メインハンドラー
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	var (
-		assetMasterData interface{}
-		assetCode       string
-		categoryId      string
-		err             error
-	)
+	var assetMasterData []AssetMaster
+	var assetCode string
+	var categoryId string
+	var err error
 
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
@@ -48,7 +46,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		if err := json.Unmarshal(jsonBytes, assetMasterReq); err != nil {
 			return events.APIGatewayProxyResponse{}, err
 		}
-		assetMasterData, err = postHandler(assetMasterReq)
+		err = postHandler(assetMasterReq)
 	case "GET":
 		// パス・クエリパラメータ取得
 		assetCode = request.QueryStringParameters["assetCode"]
@@ -78,11 +76,12 @@ func getHandler(assetCode string, categoryId string) ([]AssetMaster, error) {
 	table := connectDynamodb("asset_master")
 	// 資産データ取得
 	assetMasterData, err := getAssetMasterDataByAssetCodeAndCategoryId(table, assetCode, categoryId)
+
 	return assetMasterData, err
 }
 
 // データ登録
-func postHandler(assetMasterReq *AssetMasterReq) (AssetMaster, error) {
+func postHandler(assetMasterReq *AssetMasterReq) error {
 	assetCode := assetMasterReq.AssetCode
 	assetCategoryId := assetMasterReq.CategoryId
 	assetType := assetMasterReq.Type
@@ -94,7 +93,7 @@ func postHandler(assetMasterReq *AssetMasterReq) (AssetMaster, error) {
 	// 資産データ登録
 	err := registerAssetMasterData(table, assetMasterData)
 
-	return assetMasterData, err
+	return err
 }
 
 // 資産データ登録
@@ -103,6 +102,7 @@ func registerAssetMasterData(table dynamo.Table, assetMasterData AssetMaster) er
 	if err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -117,6 +117,7 @@ func getAssetMasterDataByAssetCodeAndCategoryId(table dynamo.Table, assetCode st
 		filter = filter.Filter("'CategoryId' = ?", categoryId)
 	}
 	err := filter.All(&assetMasterData)
+
 	return assetMasterData, err
 }
 
@@ -131,5 +132,6 @@ func connectDynamodb(table string) dynamo.Table {
 		config = config.WithEndpoint(endpoint)
 	}
 	db := dynamo.New(session, config)
+
 	return db.Table(table)
 }
