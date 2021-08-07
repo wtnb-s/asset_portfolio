@@ -1,22 +1,15 @@
-package main
+package models
 
 import (
 	"bytes"
-	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/aws/aws-lambda-go/events"
-	"github.com/aws/aws-lambda-go/lambda"
-	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/guregu/dynamo"
 	"github.com/saintfish/chardet"
 	"golang.org/x/net/html/charset"
 )
@@ -27,47 +20,46 @@ type AssetDaily struct {
 	Price     int
 }
 
-func main() {
-	lambda.Start(handler)
-}
-
-// メインハンドラー
-func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
-	// 変数初期化
+/*
+ * 指定した資産コードまたは日付を元に資産価格データを取得
+ */
+func GetAssetPriceByAssetCodeOrDate(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
-	var err error
+	// Dynamodb接続
+	table := connectDynamodb("asset_daily")
 
-	// パス・クエリパラメータ取得
-	assetCode := request.PathParameters["assetCode"]
-	fromDate := request.QueryStringParameters["fromDate"]
-	toDate := request.QueryStringParameters["toDate"]
-
-	// リクエストがPOSTかGETで実行する処理を分岐する
-	switch request.HTTPMethod {
-	case "POST":
-		err = postHandler(assetCode, fromDate, toDate)
-	case "GET":
-		assetDailyData, err = getHandler(assetCode, fromDate, toDate)
+	if assetCode == "" {
+		return nil, nil
 	}
-	if err != nil {
-		return events.APIGatewayProxyResponse{}, err
+	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
+	if fromDate != "" && toDate != "" {
+		filter = filter.Filter("'Date' > ?", fromDate)
+		filter = filter.Filter("'Date' < ?", toDate)
 	}
+	err := filter.All(&assetDailyData)
 
-	jsonBytes, _ := json.Marshal(assetDailyData)
-	return events.APIGatewayProxyResponse{
-		Headers: map[string]string{
-			"Access-Control-Allow-Origin":      os.Getenv("ALLOW_ORIGIN"),
-			"Access-Control-Allow-Headers":     "X-Requested-With, Origin, X-Csrftoken, Content-Type, Accept",
-			"Access-Control-Allow-Credentials": "true",
-			"Content-Type":                     "application/json",
-		},
-		Body:       string(jsonBytes),
-		StatusCode: 200,
-	}, nil
+	return assetDailyData, err
 }
 
-// データ登録
-func postHandler(assetCode string, fromDate string, toDate string) error {
+// 指定した資産コードの最新の価格取得
+func GetPriceLatest100DaysByAssetCode(assetCode string) ([]AssetDaily, error) {
+	var assetDailyData []AssetDaily
+	// Dynamodb接続
+	table := connectDynamodb("asset_daily")
+	// 資産価値データ取得
+	if assetCode == "" {
+		return assetDailyData, nil
+	}
+	err := table.Get("AssetCode", assetCode).All(&assetDailyData)
+	priceList := assetDailyData[len(assetDailyData)-101 : len(assetDailyData)-1]
+
+	return priceList, err
+}
+
+/*
+ * 資産価格データを保存
+ */
+func SaveAssetPrice(assetCode string, fromDate string, toDate string) error {
 	var assetDailyData AssetDaily
 
 	// 日付設定
@@ -95,7 +87,7 @@ func postHandler(assetCode string, fromDate string, toDate string) error {
 	for page := 0; page < 3; page++ {
 		values.Set("page", strconv.Itoa(page))
 		// 基準価格取得
-		dateList, priceList, _ := getPriceList(assetCode, values)
+		dateList, priceList, _ := GetListAssetPrice(assetCode, values)
 		// 不要な接続を防ぐため、ループを抜ける
 		if len(dateList) == 0 {
 			break
@@ -116,27 +108,8 @@ func postHandler(assetCode string, fromDate string, toDate string) error {
 	return nil
 }
 
-// データ取得
-func getHandler(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
-	var assetDailyData []AssetDaily
-	// Dynamodb接続
-	table := connectDynamodb("asset_daily")
-	// 資産価値データ取得
-	if assetCode == "" {
-		return nil, nil
-	}
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
-	if fromDate != "" && toDate != "" {
-		filter = filter.Filter("'Date' > ?", fromDate)
-		filter = filter.Filter("'Date' < ?", toDate)
-	}
-	err := filter.All(&assetDailyData)
-
-	return assetDailyData, err
-}
-
-// 基準価格日取得
-func getPriceList(assetCode string, params url.Values) ([]string, []string, error) {
+// sbiのHPに接続し、基準価格をスクレイピングで取得
+func GetListAssetPrice(assetCode string, params url.Values) ([]string, []string, error) {
 	var valueList []string
 	var dateList []string
 
@@ -186,18 +159,4 @@ func getPriceList(assetCode string, params url.Values) ([]string, []string, erro
 		}
 	})
 	return dateList, valueList, nil
-}
-
-// Dynamodb接続設定
-func connectDynamodb(table string) dynamo.Table {
-	// Endpoint設定(Local Dynamodb接続用)
-	endpoint := os.Getenv("DYNAMODB_ENDPOINT")
-	// Dynamodb接続設定
-	session := session.Must(session.NewSession())
-	config := aws.NewConfig().WithRegion("ap-northeast-1")
-	if len(endpoint) > 0 {
-		config = config.WithEndpoint(endpoint)
-	}
-	db := dynamo.New(session, config)
-	return db.Table(table)
 }

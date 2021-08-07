@@ -1,8 +1,8 @@
 FROM golang:1.15 as build-image
 ARG BUILD_TARGET
-WORKDIR /go/src
-COPY code/go.mod code/${BUILD_TARGET}/ ./
-RUN go build -o ../bin/buildfile
+WORKDIR /go/src/code/api/${BUILD_TARGET}
+COPY code/ /go/src/code/
+RUN go build -o /go/bin/buildfile
 
 FROM public.ecr.aws/lambda/go:1
 
