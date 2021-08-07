@@ -47,7 +47,7 @@ func SaveAssetBuy(assetBuyReq *AssetBuyReq) error {
 	assetCode := assetBuyReq.AssetCode
 	date := assetBuyReq.Date
 	amount := float64(assetBuyReq.Amount)
-	unit := float64(assetBuyReq.Buy)
+	unit := float64(assetBuyReq.Unit)
 
 	// 対象日の基準価格を取得
 	priceList, _ := GetAssetPriceByAssetCodeOrDate(assetCode, date, date)
@@ -61,7 +61,7 @@ func SaveAssetBuy(assetBuyReq *AssetBuyReq) error {
 		amount = math.Round(float64(price) * float64(unit) / 10000)
 	}
 
-	assetAmount := AssetBuy{AssetCode: assetCode, Date: date, Buy: int(unit), Amount: int(amount)}
+	assetAmount := AssetBuy{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)}
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
 	// 資産データ登録
