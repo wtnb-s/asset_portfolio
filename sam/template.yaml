@@ -33,12 +33,12 @@ Resources:
         RegistAssetMaster:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /asset/
+            Path: /asset-master/
             Method: POST
         GetAssetMaster:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /asset/
+            Path: /asset-master/
             Method: GET
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
@@ -77,23 +77,23 @@ Resources:
       Dockerfile: Dockerfile
       DockerBuildArgs: { BUILD_TARGET: assetPrice }
 
-  AssetUnitFunction:
+  AssetBuyFunction:
     Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
     Properties:
       PackageType: Image
 
-      FunctionName: 'AssetUnit'
+      FunctionName: 'AssetBuy'
       Policies: AmazonDynamoDBReadOnlyAccess
       Events:
-        RegistAssetUnit:
+        RegistAssetBuy:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /unit/
+            Path: /asset-buy/
             Method: POST
-        GetAssetUnit:
+        GetAssetBuy:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /unit/
+            Path: /asset-buy/
             Method: GET
       Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
         Variables:
@@ -102,7 +102,29 @@ Resources:
       DockerTag: go1.x-v1
       DockerContext: ./
       Dockerfile: Dockerfile
-      DockerBuildArgs: { BUILD_TARGET: assetUnit }
+      DockerBuildArgs: { BUILD_TARGET: assetBuy }
+
+  AssetTransitionFunction:
+    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
+    Properties:
+      PackageType: Image
+
+      FunctionName: 'AssetTransition'
+      Policies: AmazonDynamoDBReadOnlyAccess
+      Events:
+        GetAssetTransition:
+          Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
+          Properties:
+            Path: /asset-transition/
+            Method: GET
+      Environment: # More info about Env Vars: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#environment-object
+        Variables:
+          PARAM1: VALUE
+    Metadata:
+      DockerTag: go1.x-v1
+      DockerContext: ./
+      Dockerfile: Dockerfile
+      DockerBuildArgs: { BUILD_TARGET: assetTransition }
 
   DynamoDBAssetMaster:
     Type: 'AWS::DynamoDB::Table'
@@ -170,7 +192,7 @@ Outputs:
   # https://github.com/awslabs/serverless-application-model/blob/master/docs/internals/generated_resources.rst#api
   AssetMasterAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Asset Master Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset/'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset-master/'
   AssetMasterFunction:
     Description: 'Asset Master Lambda Function ARN'
     Value: !GetAtt AssetMasterFunction.Arn
@@ -182,9 +204,16 @@ Outputs:
     Description: 'Asset Price Lambda Function ARN'
     Value: !GetAtt AssetPriceFunction.Arn
 
-  AssetUnitAPI:
+  AssetBuyAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Asset Unit Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/unit/'
-  AssetUnitFunction:
-    Description: 'Asset Unit Lambda Function ARN'
-    Value: !GetAtt AssetUnitFunction.Arn
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset-buy/'
+  AssetBuyFunction:
+    Description: 'Asset Buy Lambda Function ARN'
+    Value: !GetAtt AssetBuyFunction.Arn
+
+  AssetTransitionAPI:
+    Description: 'API Gateway endpoint URL for Prod environment for Asset Transition Function'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/asset-transition/'
+  AssetTransitionFunction:
+    Description: 'Asset Transition Lambda Function ARN'
+    Value: !GetAtt AssetTransitionFunction.Arn
