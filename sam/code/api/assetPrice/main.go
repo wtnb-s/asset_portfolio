@@ -29,7 +29,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	case "POST":
 		err = models.SaveAssetPrice(assetCode, fromDate, toDate)
 	case "GET":
-		assetDailyData, err = models.GetAssetPriceByAssetCodeOrDate(assetCode, fromDate, toDate)
+		assetDailyData, err = models.GetAssetPriceByAssetCodeAndDate(assetCode, fromDate, toDate)
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err

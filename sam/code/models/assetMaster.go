@@ -17,7 +17,7 @@ type AssetMasterReq struct {
 /*
  * 指定した資産コードまたはカテゴリーIDを元に資産マスタデータを取得
  */
-func GetAssetMasterByAssetCodeOrCategoryId(assetCode string, categoryId string) ([]AssetMaster, error) {
+func GetAssetMasterByAssetCodeAndCategoryId(assetCode string, categoryId string) ([]AssetMaster, error) {
 	var assetMasterData []AssetMaster
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")

@@ -24,7 +24,7 @@ type AssetValue struct {
 /*
  * 指定した資産コードまたはカテゴリーIDを元に資産マスタデータを取得
  */
-func GetAssetBuyByAssetCodeAndDate(assetCode string, date string) ([]AssetBuy, error) {
+func GetAssetBuyByAssetCode(assetCode string) ([]AssetBuy, error) {
 	var assetBuy []AssetBuy
 	// Dynamodb接続
 	table := connectDynamodb("asset_unit")
@@ -33,9 +33,7 @@ func GetAssetBuyByAssetCodeAndDate(assetCode string, date string) ([]AssetBuy, e
 	if assetCode != "" {
 		filter = filter.Filter("'AssetCode' = ?", assetCode)
 	}
-	if date != "" {
-		filter = filter.Filter("'Date' = ?", date)
-	}
+
 	err := filter.All(&assetBuy)
 	return assetBuy, err
 }
@@ -50,7 +48,7 @@ func SaveAssetBuy(assetBuyReq *AssetBuyReq) error {
 	unit := float64(assetBuyReq.Unit)
 
 	// 対象日の基準価格を取得
-	priceList, _ := GetAssetPriceByAssetCodeOrDate(assetCode, date, date)
+	priceList, _ := GetAssetPriceByAssetCodeAndDate(assetCode, date, date)
 	price := priceList[0].Price
 	// 金額を引数に口数を計算する
 	if amount != 0 {

@@ -35,8 +35,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	case "GET":
 		// パス・クエリパラメータ取得
 		assetCode := request.PathParameters["assetCode"]
-		date := request.QueryStringParameters["date"]
-		assetBuyData, err = models.GetAssetBuyByAssetCodeAndDate(assetCode, date)
+		assetBuyData, err = models.GetAssetBuyByAssetCode(assetCode)
 
 		// AssetCode毎にリストを格納
 		assetBuyDataByAssetCode := make(map[string][]models.AssetBuy)
@@ -54,7 +53,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 資産名取得
 			assetName, _ := models.GetAssetName(assetCode)
 			// 指定した資産の最新の価格を取得
-			priceList, _ := models.GetPriceLatest100DaysByAssetCode(assetCode)
+			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 
 			unitData := make(map[string]interface{})
 			// 資産名
@@ -68,15 +67,6 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / 10000))
 			// 平均購入単価
 			unitData["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
-
-			// 過去１００日間の資産価値と損益の推移
-			var pastAssetValueDataList []models.AssetValue
-			for _, data := range priceList {
-				pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / 10000))
-				pastAssetValueData := models.AssetValue{Date: data.Date, Price: pastAssetValue, Profit: pastAssetValue - sumAmount}
-				pastAssetValueDataList = append(pastAssetValueDataList, pastAssetValueData)
-			}
-			unitData["assetValueList"] = pastAssetValueDataList
 
 			// 資産データをリストに追加
 			unitDataList[assetCode] = unitData

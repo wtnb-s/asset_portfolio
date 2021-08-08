@@ -23,7 +23,7 @@ type AssetDaily struct {
 /*
  * 指定した資産コードまたは日付を元に資産価格データを取得
  */
-func GetAssetPriceByAssetCodeOrDate(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
+func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate string) ([]AssetDaily, error) {
 	var assetDailyData []AssetDaily
 	// Dynamodb接続
 	table := connectDynamodb("asset_daily")
@@ -39,21 +39,6 @@ func GetAssetPriceByAssetCodeOrDate(assetCode string, fromDate string, toDate st
 	err := filter.All(&assetDailyData)
 
 	return assetDailyData, err
-}
-
-// 指定した資産コードの最新の価格取得
-func GetPriceLatest100DaysByAssetCode(assetCode string) ([]AssetDaily, error) {
-	var assetDailyData []AssetDaily
-	// Dynamodb接続
-	table := connectDynamodb("asset_daily")
-	// 資産価値データ取得
-	if assetCode == "" {
-		return assetDailyData, nil
-	}
-	err := table.Get("AssetCode", assetCode).All(&assetDailyData)
-	priceList := assetDailyData[len(assetDailyData)-101 : len(assetDailyData)-1]
-
-	return priceList, err
 }
 
 /*

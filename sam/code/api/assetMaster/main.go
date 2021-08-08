@@ -35,7 +35,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		// パス・クエリパラメータ取得
 		assetCode = request.QueryStringParameters["assetCode"]
 		categoryId = request.QueryStringParameters["date"]
-		assetMasterData, err = models.GetAssetMasterByAssetCodeOrCategoryId(assetCode, categoryId)
+		assetMasterData, err = models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, categoryId)
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
