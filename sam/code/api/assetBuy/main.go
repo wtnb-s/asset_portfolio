@@ -59,9 +59,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 資産名
 			unitData["assetName"] = assetName
 			// 保持株数
-			unitData["sumUnit"] = sumUnit
+			unitData["totalUnit"] = sumUnit
 			// 合計購入価格
-			unitData["acquisitionPrice"] = sumAmount
+			unitData["totalBuyPrice"] = sumAmount
 			// 現在価値
 			currentPrice := priceList[len(priceList)-1].Price
 			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / 10000))
