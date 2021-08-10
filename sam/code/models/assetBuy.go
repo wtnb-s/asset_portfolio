@@ -15,12 +15,6 @@ type AssetBuyReq struct {
 	Amount    int    `json:"Amount"`
 }
 
-type AssetValue struct {
-	Date   string
-	Price  int
-	Profit int
-}
-
 /*
  * 指定した資産コードまたはカテゴリーIDを元に資産マスタデータを取得
  */

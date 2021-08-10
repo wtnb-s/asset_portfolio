@@ -5,6 +5,4 @@ sam/samconfig.toml
 sam/template.yaml.sample
 sam/test/env.json
 sam/code/.devcontainer
-sam/code/registScore
-sam/code/getScore
 sam/code/go.sum
