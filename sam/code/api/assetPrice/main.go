@@ -27,7 +27,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
 	case "POST":
-		err = models.SaveAssetPrice(assetCode, fromDate, toDate)
+		err = models.SavePriceInvestmentTrust(assetCode, fromDate, toDate)
 	case "GET":
 		assetDailyData, err = models.GetAssetPriceByAssetCodeAndDate(assetCode, fromDate, toDate)
 	}

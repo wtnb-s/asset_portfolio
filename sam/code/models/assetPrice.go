@@ -44,7 +44,7 @@ func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate s
 /*
  * 資産価格データを保存
  */
-func SaveAssetPrice(assetCode string, fromDate string, toDate string) error {
+func SavePriceInvestmentTrust(assetCode string, fromDate string, toDate string) error {
 	var assetDailyData AssetDaily
 
 	// 日付設定
@@ -72,7 +72,7 @@ func SaveAssetPrice(assetCode string, fromDate string, toDate string) error {
 	for page := 0; page < 3; page++ {
 		values.Set("page", strconv.Itoa(page))
 		// 基準価格取得
-		dateList, priceList, _ := GetListAssetPrice(assetCode, values)
+		dateList, priceList, _ := GetListPriceInvestmentTrust(assetCode, values)
 		// 不要な接続を防ぐため、ループを抜ける
 		if len(dateList) == 0 {
 			break
@@ -94,7 +94,7 @@ func SaveAssetPrice(assetCode string, fromDate string, toDate string) error {
 }
 
 // sbiのHPに接続し、基準価格をスクレイピングで取得
-func GetListAssetPrice(assetCode string, params url.Values) ([]string, []string, error) {
+func GetListPriceInvestmentTrust(assetCode string, params url.Values) ([]string, []string, error) {
 	var valueList []string
 	var dateList []string
 
