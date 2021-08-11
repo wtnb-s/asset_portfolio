@@ -2,9 +2,11 @@ package models
 
 import (
 	"bytes"
+	"encoding/json"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +20,73 @@ type AssetDaily struct {
 	AssetCode string
 	Date      string
 	Price     int
+}
+
+type AssetPriceReq struct {
+	AssetType string `json:"AssetType"`
+	AssetCode string `json:"AssetCode"`
+	FromDate  string `json:"FromDate"`
+	ToDate    string `json:"ToDate"`
+	Region    string `json:"Region"`
+	GetRange  string `json:"GetRange"`
+}
+
+type YahooFinanceStockData struct {
+	Chart struct {
+		Result []struct {
+			Meta struct {
+				Currency             string  `json:"currency"`
+				Symbol               string  `json:"symbol"`
+				ExchangeName         string  `json:"exchangeName"`
+				InstrumentType       string  `json:"instrumentType"`
+				FirstTradeDate       int     `json:"firstTradeDate"`
+				RegularMarketTime    int     `json:"regularMarketTime"`
+				Gmtoffset            int     `json:"gmtoffset"`
+				Timezone             string  `json:"timezone"`
+				ExchangeTimezoneName string  `json:"exchangeTimezoneName"`
+				RegularMarketPrice   float64 `json:"regularMarketPrice"`
+				ChartPreviousClose   float64 `json:"chartPreviousClose"`
+				PriceHint            int     `json:"priceHint"`
+				CurrentTradingPeriod struct {
+					Pre struct {
+						Timezone  string `json:"timezone"`
+						Start     int    `json:"start"`
+						End       int    `json:"end"`
+						Gmtoffset int    `json:"gmtoffset"`
+					} `json:"pre"`
+					Regular struct {
+						Timezone  string `json:"timezone"`
+						Start     int    `json:"start"`
+						End       int    `json:"end"`
+						Gmtoffset int    `json:"gmtoffset"`
+					} `json:"regular"`
+					Post struct {
+						Timezone  string `json:"timezone"`
+						Start     int    `json:"start"`
+						End       int    `json:"end"`
+						Gmtoffset int    `json:"gmtoffset"`
+					} `json:"post"`
+				} `json:"currentTradingPeriod"`
+				DataGranularity string   `json:"dataGranularity"`
+				Range           string   `json:"range"`
+				ValidRanges     []string `json:"validRanges"`
+			} `json:"meta"`
+			Timestamp  []int `json:"timestamp"`
+			Indicators struct {
+				Quote []struct {
+					Low    []float64 `json:"low"`
+					Close  []float64 `json:"close"`
+					Volume []float64 `json:"volume"`
+					Open   []float64 `json:"open"`
+					High   []float64 `json:"high"`
+				} `json:"quote"`
+				Adjclose []struct {
+					Adjclose []float64 `json:"adjclose"`
+				} `json:"adjclose"`
+			} `json:"indicators"`
+		} `json:"result"`
+		Error error `json:"error"`
+	} `json:"chart"`
 }
 
 /*
@@ -42,11 +111,10 @@ func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate s
 }
 
 /*
- * 資産価格データを保存
+ * 投資信託の基準価格時系列データを保存（SBIからスクレイピングで取得）
  */
 func SavePriceInvestmentTrust(assetCode string, fromDate string, toDate string) error {
 	var assetDailyData AssetDaily
-
 	// 日付設定
 	splitfromDate := strings.Split(fromDate, "-")
 	splitToDate := strings.Split(toDate, "-")
@@ -144,4 +212,66 @@ func GetListPriceInvestmentTrust(assetCode string, params url.Values) ([]string,
 		}
 	})
 	return dateList, valueList, nil
+}
+
+/*
+ * 株価の時系列データを保存（Yahoo Finance APIから取得）
+ */
+func SavePriceStock(region string, assetCode string, getRange string) error {
+	var assetDailyData AssetDaily
+	// Dynamodb接続
+	table := connectDynamodb("asset_daily")
+	// 基準価格取得
+	dateList, priceList, err := GetListPriceStock(region, assetCode, getRange)
+	if err != nil {
+		return err
+	}
+
+	for idx, date := range dateList {
+		price := priceList[idx]
+		assetDailyData = AssetDaily{AssetCode: assetCode, Date: date, Price: price}
+
+		// 資産価値データ登録
+		err := table.Put(assetDailyData).Run()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Yahoo Finance APIから指定したシンボルの株価を取得
+func GetListPriceStock(region string, assetCode string, getRange string) ([]string, []int, error) {
+	url := "https://apidojo-yahoo-finance-v1.p.rapidapi.com/stock/v2/get-chart?interval=1d&symbol=" + assetCode + "&range=" + getRange + "&region=" + region
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Add("x-rapidapi-key", os.Getenv("RAPIDAPI_Key"))
+	req.Header.Add("x-rapidapi-host", "apidojo-yahoo-finance-v1.p.rapidapi.com")
+	res, _ := http.DefaultClient.Do(req)
+
+	defer res.Body.Close()
+	body, _ := ioutil.ReadAll(res.Body)
+	// JSONデコード
+	var yahooFinanceStockData YahooFinanceStockData
+	if err := json.Unmarshal(body, &yahooFinanceStockData); err != nil {
+		return nil, nil, err
+	}
+	// APIエラー判定
+	if err := yahooFinanceStockData.Chart.Error; err != nil {
+		return nil, nil, err
+	}
+	// 日付、価格取得
+	timestampList := yahooFinanceStockData.Chart.Result[0].Timestamp
+	adjcloseList := yahooFinanceStockData.Chart.Result[0].Indicators.Adjclose[0].Adjclose
+	const layout = "2006-01-02"
+	var dateList []string
+	var priceList []int
+	for idx, timestamp := range timestampList {
+		// Unixタイムスタンプデータをyyyy-mm-dd形式に変換
+		timeFull := time.Unix(int64(timestamp), 0)
+		dateList = append(dateList, timeFull.Format(layout))
+		// float64をintに変換
+		priceList = append(priceList, int(adjcloseList[idx]))
+	}
+
+	return dateList, priceList, nil
 }

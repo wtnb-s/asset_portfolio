@@ -6,6 +6,8 @@ Description: >
 Parameters:
   ProductionURL:
     Type: String
+  RapidApiKey:
+    Type: String
 
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
@@ -15,6 +17,7 @@ Globals:
       Variables:
         DYNAMODB_ENDPOINT: ''
         ALLOW_ORIGIN: !Ref ProductionURL
+        RAPIDAPI_Key: !Ref RapidApiKey
   Api:
     Cors:
       AllowMethods: "'DELETE,GET,HEAD,OPTIONS,PATCH,POST,PUT'"
@@ -60,7 +63,7 @@ Resources:
         RegistAssetPrice:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
           Properties:
-            Path: /fund/{assetCode}/
+            Path: /fund/
             Method: POST
         GetAssetPrice:
           Type: Api # More info about API Event Source: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#api
@@ -199,7 +202,7 @@ Outputs:
 
   AssetPriceAPI:
     Description: 'API Gateway endpoint URL for Prod environment for Asset Price Function'
-    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/{assetCode}/'
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/fund/'
   AssetPriceFunction:
     Description: 'Asset Price Lambda Function ARN'
     Value: !GetAtt AssetPriceFunction.Arn

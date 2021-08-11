@@ -3,6 +3,7 @@ package main
 import (
 	"code/models"
 	"encoding/json"
+	"errors"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -19,16 +20,42 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	var assetDailyData []models.AssetDaily
 	var err error
 
-	// パス・クエリパラメータ取得
-	assetCode := request.PathParameters["assetCode"]
-	fromDate := request.QueryStringParameters["fromDate"]
-	toDate := request.QueryStringParameters["toDate"]
-
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
 	case "POST":
-		err = models.SavePriceInvestmentTrust(assetCode, fromDate, toDate)
+		// リクエストボディ取得
+		reqBody := request.Body
+		jsonBytes := ([]byte)(reqBody)
+		assetPriceReq := new(models.AssetPriceReq)
+		if err = json.Unmarshal(jsonBytes, assetPriceReq); err != nil {
+			return events.APIGatewayProxyResponse{}, err
+		}
+		// 資産タイプ（株 or 投資信託）
+		assetType := assetPriceReq.AssetType
+		// 資産コード
+		assetCode := assetPriceReq.AssetCode
+		if assetType == "stock" {
+			// 対象地域(ex: US, JP...)
+			region := assetPriceReq.Region
+			// 取得対象期間(1d, 1mo, 1y)
+			getRange := assetPriceReq.GetRange
+			// 株価の時系列データを保存（Yahoo Finance APIから取得）
+			err = models.SavePriceStock(region, assetCode, getRange)
+		} else if assetType == "investmentTrust" {
+			// 取得開始期間(yyyy-mm-dd)
+			fromDate := assetPriceReq.FromDate
+			// 取得終了期間(yyyy-mm-dd)
+			toDate := assetPriceReq.ToDate
+			// 投資信託の基準価格時系列データを保存
+			err = models.SavePriceInvestmentTrust(assetCode, fromDate, toDate)
+		} else {
+			err = errors.New("no entered asset type")
+		}
 	case "GET":
+		// パス・クエリパラメータ取得
+		assetCode := request.PathParameters["assetCode"]
+		fromDate := request.QueryStringParameters["fromDate"]
+		toDate := request.QueryStringParameters["toDate"]
 		assetDailyData, err = models.GetAssetPriceByAssetCodeAndDate(assetCode, fromDate, toDate)
 	}
 	if err != nil {
