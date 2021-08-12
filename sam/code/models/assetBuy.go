@@ -44,13 +44,20 @@ func SaveAssetBuy(assetBuyReq *AssetBuyReq) error {
 	// 対象日の基準価格を取得
 	priceList, _ := GetAssetPriceByAssetCodeAndDate(assetCode, date, date)
 	price := priceList[0].Price
+
+	// 投資信託であれば、基準価格=1万口に合わせて、算出する
+	assetMaster, _ := GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
+	basePriceConstant := 1
+	if assetMaster[0].Type == 3 {
+		basePriceConstant = 10000
+	}
 	// 金額を引数に口数を計算する
 	if amount != 0 {
-		unit = math.Round(float64(amount) / float64(price) * 10000)
+		unit = math.Round(float64(amount) / float64(price) * float64(basePriceConstant))
 	}
 	// 口数を引数に金額を計算する
 	if unit != 0 {
-		amount = math.Round(float64(price) * float64(unit) / 10000)
+		amount = math.Round(float64(price) * float64(unit) / float64(basePriceConstant))
 	}
 
 	assetAmount := AssetBuy{AssetCode: assetCode, Date: date, Unit: int(unit), Amount: int(amount)}

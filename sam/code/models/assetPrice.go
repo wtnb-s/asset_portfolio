@@ -102,8 +102,8 @@ func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate s
 	}
 	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
 	if fromDate != "" && toDate != "" {
-		filter = filter.Filter("'Date' > ?", fromDate)
-		filter = filter.Filter("'Date' < ?", toDate)
+		filter = filter.Filter("'Date' >= ?", fromDate)
+		filter = filter.Filter("'Date' <= ?", toDate)
 	}
 	err := filter.All(&assetDailyData)
 

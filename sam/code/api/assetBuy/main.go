@@ -51,7 +51,15 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				sumAmount = sumAmount + data.Amount
 			}
 			// 資産名取得
-			assetName, _ := models.GetAssetName(assetCode)
+			assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
+			assetName := assetMaster[0].Name
+
+			// 投資信託であれば、基準価格=1万口に合わせて、算出する
+			basePriceConstant := 1
+			if assetMaster[0].Type == 3 {
+				basePriceConstant = 10000
+			}
+
 			// 指定した資産の最新の価格を取得
 			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 
@@ -64,9 +72,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			unitData["totalBuyPrice"] = sumAmount
 			// 現在価値
 			currentPrice := priceList[len(priceList)-1].Price
-			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / 10000))
+			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / float64(basePriceConstant)))
 			// 平均購入単価
-			unitData["avaregeUnitPrice"] = 10000 * sumAmount / sumUnit
+			unitData["avaregeUnitPrice"] = basePriceConstant * sumAmount / sumUnit
 
 			// 資産データをリストに追加
 			unitDataList[assetCode] = unitData
