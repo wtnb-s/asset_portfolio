@@ -246,7 +246,10 @@ func GetListPriceStock(region string, assetCode string, getRange string) ([]stri
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Add("x-rapidapi-key", os.Getenv("RAPIDAPI_Key"))
 	req.Header.Add("x-rapidapi-host", "apidojo-yahoo-finance-v1.p.rapidapi.com")
-	res, _ := http.DefaultClient.Do(req)
+	res, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, nil, err
+	}
 
 	defer res.Body.Close()
 	body, _ := ioutil.ReadAll(res.Body)
