@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code/config"
 	"code/models"
 	"encoding/json"
 	"math"
@@ -14,7 +15,11 @@ func main() {
 	lambda.Start(handler)
 }
 
-// メインハンドラー
+/*
+ * メインハンドラー
+ * @param request httpリクエスト
+ * return httpレスポンス
+ */
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 変数初期化
 	var assetBuyData []models.AssetBuy
@@ -56,11 +61,11 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 			// 投資信託であれば、基準価格=1万口に合わせて、算出する
 			basePriceConstant := 1
-			if assetMaster[0].Type == 3 {
+			if assetMaster[0].Type == config.ASSET_TYPE_INVESTMENT_TRUST {
 				basePriceConstant = 10000
 			}
 
-			// 指定した資産の最新の価格を取得
+			// 指定した資産の直近価格を取得
 			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 
 			unitData := make(map[string]interface{})

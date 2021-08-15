@@ -1,6 +1,9 @@
 package models
 
-import "math"
+import (
+	"code/config"
+	"math"
+)
 
 type AssetBuy struct {
 	AssetCode string
@@ -48,7 +51,7 @@ func SaveAssetBuy(assetBuyReq *AssetBuyReq) error {
 	// 投資信託であれば、基準価格=1万口に合わせて、算出する
 	assetMaster, _ := GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
 	basePriceConstant := 1
-	if assetMaster[0].Type == 3 {
+	if assetMaster[0].Type == config.ASSET_TYPE_INVESTMENT_TRUST {
 		basePriceConstant = 10000
 	}
 	// 金額を引数に口数を計算する

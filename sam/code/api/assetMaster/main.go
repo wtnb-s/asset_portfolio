@@ -13,7 +13,11 @@ func main() {
 	lambda.Start(handler)
 }
 
-// メインハンドラー
+/*
+ * メインハンドラー
+ * @param request httpリクエスト
+ * return httpレスポンス
+ */
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	var assetMasterData []models.AssetMaster
 	var assetCode string

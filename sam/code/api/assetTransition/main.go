@@ -20,7 +20,11 @@ func main() {
 	lambda.Start(handler)
 }
 
-// メインハンドラー
+/*
+ * メインハンドラー
+ * @param request httpリクエスト
+ * return httpレスポンス
+ */
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 変数初期化
 	var assetBuyData []models.AssetBuy
@@ -49,7 +53,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			sumAmount = sumAmount + data.Amount
 		}
 
-		// 指定した資産コードの資産の0〜100日前までの価格を取得
+		// 指定した資産の0〜100日前までの価格を取得
 		priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 		priceListPast100day := priceList[len(priceList)-101 : len(priceList)-1]
 
@@ -61,7 +65,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 	}
 
-	// 構造体スライスになるように形式を変換
+	// 構造体のスライス形式になるように形式を変換
 	var tranditionDataList []AssetTransition
 	for idx, date := range dateList {
 		tranditionData := AssetTransition{Date: date, Value: totalPastAssetValue[idx], Profit: totalPastAssetProfit[idx]}
