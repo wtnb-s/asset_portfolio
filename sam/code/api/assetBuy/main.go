@@ -6,10 +6,29 @@ import (
 	"encoding/json"
 	"math"
 	"os"
+	"strconv"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
+
+type UnitDataList struct {
+	Detail   []UnitDataDetail
+	Category UnitDataCategory
+}
+
+type UnitDataDetail struct {
+	AssetCode        string
+	AssetName        string
+	TotalUnit        int
+	TotalBuyPrice    int
+	PresentValue     int
+	AvaregeUnitPrice int
+}
+type UnitDataCategory struct {
+	TotalBuyPrice [6]int
+	PresentValue  [6]int
+}
 
 func main() {
 	lambda.Start(handler)
@@ -22,9 +41,8 @@ func main() {
  */
 func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	// 変数初期化
-	var assetBuyData []models.AssetBuy
 	var err error
-	unitDataList := make(map[string]map[string]interface{})
+	var unitDataList UnitDataList
 
 	// リクエストがPOSTかGETで実行する処理を分岐する
 	switch request.HTTPMethod {
@@ -38,9 +56,12 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 		err = models.SaveAssetBuy(assetBuyReq)
 	case "GET":
+		var unitDataDetailList []UnitDataDetail
+		var unitDataCategory UnitDataCategory
+
 		// パス・クエリパラメータ取得
 		assetCode := request.PathParameters["assetCode"]
-		assetBuyData, err = models.GetAssetBuyByAssetCode(assetCode)
+		assetBuyData, _ := models.GetAssetBuyByAssetCode(assetCode)
 
 		// AssetCode毎にリストを格納
 		assetBuyDataByAssetCode := make(map[string][]models.AssetBuy)
@@ -58,6 +79,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 資産名取得
 			assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
 			assetName := assetMaster[0].Name
+			assetCategoryId, _ := strconv.Atoi(assetMaster[0].CategoryId)
 
 			// 投資信託であれば、基準価格=1万口に合わせて、算出する
 			basePriceConstant := 1
@@ -67,23 +89,32 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 			// 指定した資産の直近価格を取得
 			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
-
-			unitData := make(map[string]interface{})
-			// 資産名
-			unitData["assetName"] = assetName
-			// 保持株数
-			unitData["totalUnit"] = sumUnit
-			// 合計購入価格
-			unitData["totalBuyPrice"] = sumAmount
 			// 現在価値
 			currentPrice := priceList[len(priceList)-1].Price
-			unitData["presentValue"] = int(math.Round(float64(currentPrice) * float64(sumUnit) / float64(basePriceConstant)))
-			// 平均購入単価
-			unitData["avaregeUnitPrice"] = basePriceConstant * sumAmount / sumUnit
+			presentValue := int(math.Round(float64(currentPrice) * float64(sumUnit) / float64(basePriceConstant)))
 
+			unitDataDetail := UnitDataDetail{
+				// 資産コード
+				AssetCode: assetCode,
+				// 資産名
+				AssetName: assetName,
+				// 保持株数
+				TotalUnit: sumUnit,
+				// 合計購入価格
+				TotalBuyPrice: sumAmount,
+				// 現在価値
+				PresentValue: presentValue,
+				// 平均購入単価
+				AvaregeUnitPrice: basePriceConstant * sumAmount / sumUnit,
+			}
 			// 資産データをリストに追加
-			unitDataList[assetCode] = unitData
+			unitDataDetailList = append(unitDataDetailList, unitDataDetail)
+
+			// 資産タイプ毎にまとめる
+			unitDataCategory.PresentValue[assetCategoryId] = unitDataCategory.PresentValue[assetCategoryId] + sumAmount
+			unitDataCategory.TotalBuyPrice[assetCategoryId] = unitDataCategory.TotalBuyPrice[assetCategoryId] + presentValue
 		}
+		unitDataList = UnitDataList{Detail: unitDataDetailList, Category: unitDataCategory}
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
