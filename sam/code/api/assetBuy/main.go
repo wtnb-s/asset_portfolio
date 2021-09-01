@@ -14,7 +14,7 @@ import (
 
 type UnitDataList struct {
 	Detail   []UnitDataDetail
-	Category UnitDataCategory
+	Category [7]UnitDataCategory
 }
 
 type UnitDataDetail struct {
@@ -26,8 +26,10 @@ type UnitDataDetail struct {
 	AvaregeUnitPrice int
 }
 type UnitDataCategory struct {
-	TotalBuyPrice [6]int
-	PresentValue  [6]int
+	AssetCode     string
+	AssetName     string
+	TotalBuyPrice int
+	PresentValue  int
 }
 
 func main() {
@@ -56,8 +58,17 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		}
 		err = models.SaveAssetBuy(assetBuyReq)
 	case "GET":
+		// 変数初期化
 		var unitDataDetailList []UnitDataDetail
-		var unitDataCategory UnitDataCategory
+		var unitDataCategoryList [7]UnitDataCategory
+		// カテゴリコードとカテゴリー名を設定する
+		assetCategoryList := map[string]string{"1": "日本株", "2": "先進国株", "3": "新興株", "4": "先進国債券", "5": "新興国債券", "6": "コモディティ", "7": "暗号資産"}
+		index := 0
+		for code, name := range assetCategoryList {
+			unitDataCategoryList[index].AssetCode = code
+			unitDataCategoryList[index].AssetName = name
+			index++
+		}
 
 		// パス・クエリパラメータ取得
 		assetCode := request.PathParameters["assetCode"]
@@ -111,10 +122,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			unitDataDetailList = append(unitDataDetailList, unitDataDetail)
 
 			// 資産タイプ毎にまとめる
-			unitDataCategory.PresentValue[assetCategoryId] = unitDataCategory.PresentValue[assetCategoryId] + sumAmount
-			unitDataCategory.TotalBuyPrice[assetCategoryId] = unitDataCategory.TotalBuyPrice[assetCategoryId] + presentValue
+			unitDataCategoryList[assetCategoryId].PresentValue = unitDataCategoryList[assetCategoryId].PresentValue + sumAmount
+			unitDataCategoryList[assetCategoryId].TotalBuyPrice = unitDataCategoryList[assetCategoryId].TotalBuyPrice + presentValue
 		}
-		unitDataList = UnitDataList{Detail: unitDataDetailList, Category: unitDataCategory}
+		unitDataList = UnitDataList{Detail: unitDataDetailList, Category: unitDataCategoryList}
 	}
 	if err != nil {
 		return events.APIGatewayProxyResponse{}, err
