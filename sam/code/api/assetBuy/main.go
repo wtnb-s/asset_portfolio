@@ -62,12 +62,10 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		var unitDataDetailList []UnitDataDetail
 		var unitDataCategoryList [7]UnitDataCategory
 		// カテゴリコードとカテゴリー名を設定する
-		assetCategoryList := map[string]string{"1": "日本株", "2": "先進国株", "3": "新興株", "4": "先進国債券", "5": "新興国債券", "6": "コモディティ", "7": "暗号資産"}
-		index := 0
+		assetCategoryList := map[int]string{1: "日本株", 2: "先進国株", 3: "新興株", 4: "先進国債券", 5: "新興国債券", 6: "コモディティ", 7: "暗号資産"}
 		for code, name := range assetCategoryList {
-			unitDataCategoryList[index].AssetCode = code
-			unitDataCategoryList[index].AssetName = name
-			index++
+			unitDataCategoryList[code-1].AssetCode = strconv.Itoa(code)
+			unitDataCategoryList[code-1].AssetName = name
 		}
 
 		// パス・クエリパラメータ取得
@@ -122,8 +120,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			unitDataDetailList = append(unitDataDetailList, unitDataDetail)
 
 			// 資産タイプ毎にまとめる
-			unitDataCategoryList[assetCategoryId].PresentValue = unitDataCategoryList[assetCategoryId].PresentValue + sumAmount
-			unitDataCategoryList[assetCategoryId].TotalBuyPrice = unitDataCategoryList[assetCategoryId].TotalBuyPrice + presentValue
+			index := assetCategoryId - 1
+			unitDataCategoryList[index].PresentValue = unitDataCategoryList[index].PresentValue + sumAmount
+			unitDataCategoryList[index].TotalBuyPrice = unitDataCategoryList[index].TotalBuyPrice + presentValue
 		}
 		unitDataList = UnitDataList{Detail: unitDataDetailList, Category: unitDataCategoryList}
 	}
