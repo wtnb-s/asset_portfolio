@@ -121,8 +121,8 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 			// 資産タイプ毎にまとめる
 			index := assetCategoryId - 1
-			unitDataCategoryList[index].PresentValue = unitDataCategoryList[index].PresentValue + sumAmount
-			unitDataCategoryList[index].TotalBuyPrice = unitDataCategoryList[index].TotalBuyPrice + presentValue
+			unitDataCategoryList[index].PresentValue = unitDataCategoryList[index].PresentValue + presentValue
+			unitDataCategoryList[index].TotalBuyPrice = unitDataCategoryList[index].TotalBuyPrice + sumAmount
 		}
 		unitDataList = UnitDataList{Detail: unitDataDetailList, Category: unitDataCategoryList}
 	}

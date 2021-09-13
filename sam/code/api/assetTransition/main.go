@@ -1,6 +1,7 @@
 package main
 
 import (
+	"code/config"
 	"code/models"
 	"encoding/json"
 	"math"
@@ -32,6 +33,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 	// 全ての資産購入データを取得し、AssetCode毎にリストを格納し、詰め直す
 	assetBuyData, err = models.GetAssetBuyByAssetCode("")
+	// AssetCode毎にリストを格納
 	assetBuyDataByAssetCode := make(map[string][]models.AssetBuy)
 	for _, data := range assetBuyData {
 		assetBuyDataByAssetCode[data.AssetCode] = append(assetBuyDataByAssetCode[data.AssetCode], data)
@@ -57,10 +59,18 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 		priceListPast100day := priceList[len(priceList)-101 : len(priceList)-1]
 
+		// 資産名取得
+		assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
+		// 投資信託であれば、基準価格=1万口に合わせて、算出する
+		basePriceConstant := 1
+		if assetMaster[0].Type == config.ASSET_TYPE_INVESTMENT_TRUST {
+			basePriceConstant = 10000
+		}
+
 		for idx, data := range priceListPast100day {
-			pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / 10000))
+			pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / float64(basePriceConstant)))
 			totalPastAssetValue[idx] = totalPastAssetValue[idx] + pastAssetValue
-			totalPastAssetProfit[idx] = totalPastAssetProfit[idx] + pastAssetValue - sumAmount
+			totalPastAssetProfit[idx] = totalPastAssetProfit[idx] + (pastAssetValue - sumAmount)
 			dateList[idx] = data.Date
 		}
 	}
