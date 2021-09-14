@@ -57,7 +57,7 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 
 		// 指定した資産の0〜100日前までの価格を取得
 		priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
-		priceListPast100day := priceList[len(priceList)-101 : len(priceList)-1]
+		priceListPast100day := priceList[len(priceList)-100 : len(priceList)]
 
 		// 資産名取得
 		assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
