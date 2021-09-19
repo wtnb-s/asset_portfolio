@@ -18,18 +18,22 @@ type UnitDataList struct {
 }
 
 type UnitDataDetail struct {
-	AssetCode        string
-	AssetName        string
-	TotalUnit        int
-	TotalBuyPrice    int
-	PresentValue     int
-	AvaregeUnitPrice int
+	AssetCode                     string
+	AssetName                     string
+	PresentValue                  int
+	PresentValueDayBeforeProfit   int
+	TotalUnit                     int
+	StockPrice                    int
+	StockPriceDayBeforeProfit     int
+	StockPriceDayBeforeProfitRate float64
+	TotalBuyPrice                 int
+	AvaregeUnitPrice              int
 }
 type UnitDataCategory struct {
 	AssetCode     string
 	AssetName     string
-	TotalBuyPrice int
 	PresentValue  int
+	TotalBuyPrice int
 }
 
 func main() {
@@ -99,20 +103,29 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			// 指定した資産の直近価格を取得
 			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
 			// 現在価値
-			currentPrice := priceList[len(priceList)-1].Price
-			presentValue := int(math.Round(float64(currentPrice) * float64(sumUnit) / float64(basePriceConstant)))
+			presentValue := int(math.Round(float64(priceList[len(priceList)-1].Price) * float64(sumUnit) / float64(basePriceConstant)))
+			// 1日前の現在価値
+			presentValueBeforeDay := int(math.Round(float64(priceList[len(priceList)-2].Price) * float64(sumUnit) / float64(basePriceConstant)))
 
 			unitDataDetail := UnitDataDetail{
 				// 資産コード
 				AssetCode: assetCode,
 				// 資産名
 				AssetName: assetName,
-				// 保持株数
-				TotalUnit: sumUnit,
-				// 合計購入価格
-				TotalBuyPrice: sumAmount,
 				// 現在価値
 				PresentValue: presentValue,
+				// 現在価値前日比
+				PresentValueDayBeforeProfit: presentValue - presentValueBeforeDay,
+				// 保持株数
+				TotalUnit: sumUnit,
+				// 株価
+				StockPrice: priceList[len(priceList)-1].Price,
+				// 株価前日比
+				StockPriceDayBeforeProfit: priceList[len(priceList)-1].Price - priceList[len(priceList)-2].Price,
+				// 株価前日比率
+				StockPriceDayBeforeProfitRate: float64(priceList[len(priceList)-1].Price-priceList[len(priceList)-2].Price) / float64(priceList[len(priceList)-1].Price) * 100,
+				// 合計購入価格
+				TotalBuyPrice: sumAmount,
 				// 平均購入単価
 				AvaregeUnitPrice: basePriceConstant * sumAmount / sumUnit,
 			}
