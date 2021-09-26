@@ -22,10 +22,7 @@ func GetAssetMasterByAssetCodeAndCategoryId(assetCode string, categoryId string)
 	// Dynamodb接続
 	table := connectDynamodb("asset_master")
 
-	filter := table.Scan()
-	if assetCode != "" {
-		filter = filter.Filter("'AssetCode' = ?", assetCode)
-	}
+	filter := table.Get("AssetCode", assetCode)
 	if categoryId != "" {
 		filter = filter.Filter("'CategoryId' = ?", categoryId)
 	}

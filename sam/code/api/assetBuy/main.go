@@ -14,7 +14,7 @@ import (
 
 type UnitDataList struct {
 	Detail   []UnitDataDetail
-	Category [7]UnitDataCategory
+	Category [8]UnitDataCategory
 }
 
 type UnitDataDetail struct {
@@ -64,9 +64,9 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 	case "GET":
 		// 変数初期化
 		var unitDataDetailList []UnitDataDetail
-		var unitDataCategoryList [7]UnitDataCategory
+		var unitDataCategoryList [8]UnitDataCategory
 		// カテゴリコードとカテゴリー名を設定する
-		assetCategoryList := map[int]string{1: "日本株", 2: "先進国株", 3: "新興株", 4: "先進国債券", 5: "新興国債券", 6: "コモディティ", 7: "暗号資産"}
+		assetCategoryList := map[int]string{1: "国内株", 2: "先進国株", 3: "新興株", 4: "先進国債券", 5: "新興国債券", 6: "コモディティ", 7: "暗号資産", 8: "現金"}
 		for code, name := range assetCategoryList {
 			unitDataCategoryList[code-1].AssetCode = strconv.Itoa(code)
 			unitDataCategoryList[code-1].AssetName = name
@@ -81,13 +81,22 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 		for _, data := range assetBuyData {
 			assetBuyDataByAssetCode[data.AssetCode] = append(assetBuyDataByAssetCode[data.AssetCode], data)
 		}
+
+		// 最新の日付を取得
+		latestDay := models.GetLatestDay("9C311125")
 		// 保持している資産の株数と平均取得単価を算出
 		for assetCode, dataList := range assetBuyDataByAssetCode {
-			sumUnit := 0
-			sumAmount := 0
+			var (
+				sumUnit                int
+				sumAmount              int
+				sumUnitExceptLatestDay int
+			)
 			for _, data := range dataList {
 				sumUnit = sumUnit + data.Unit
 				sumAmount = sumAmount + data.Amount
+				if data.Date != latestDay {
+					sumUnitExceptLatestDay = sumUnitExceptLatestDay + data.Unit
+				}
 			}
 			// 資産名取得
 			assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
@@ -100,12 +109,38 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				basePriceConstant = 10000
 			}
 
-			// 指定した資産の直近価格を取得
-			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
-			// 現在価値
-			presentValue := int(math.Round(float64(priceList[len(priceList)-1].Price) * float64(sumUnit) / float64(basePriceConstant)))
-			// 1日前の現在価値
-			presentValueBeforeDay := int(math.Round(float64(priceList[len(priceList)-2].Price) * float64(sumUnit) / float64(basePriceConstant)))
+			var (
+				presentValue                  int
+				presentValueDayBeforeProfit   int
+				stockPrice                    int
+				stockPriceDayBeforeProfit     int
+				stockPriceDayBeforeProfitRate float64
+				avaregeUnitPrice              int
+			)
+
+			// 資産タイプが現金とそれ以外の場合で算出方法を分ける
+			if assetMaster[0].Type != config.ASSET_TYPE_CACHE {
+				// 現金以外の場合
+				// 指定した資産の直近価格を取得
+				priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
+				// 現在価値
+				presentValue = int(math.Round(float64(priceList[len(priceList)-1].Price) * float64(sumUnit) / float64(basePriceConstant)))
+				// 1日前の現在価値
+				presentValueBeforeDay := int(math.Round(float64(priceList[len(priceList)-2].Price) * float64(sumUnitExceptLatestDay) / float64(basePriceConstant)))
+				// 現在価値前日比
+				presentValueDayBeforeProfit = presentValue - presentValueBeforeDay
+				// 株価
+				stockPrice = priceList[len(priceList)-1].Price
+				// 株価前日比
+				stockPriceDayBeforeProfit = priceList[len(priceList)-1].Price - priceList[len(priceList)-2].Price
+				// 株価前日比率
+				stockPriceDayBeforeProfitRate = float64(priceList[len(priceList)-1].Price-priceList[len(priceList)-2].Price) / float64(priceList[len(priceList)-1].Price) * 100
+				// 平均購入単価
+				avaregeUnitPrice = basePriceConstant * sumAmount / sumUnit
+			} else {
+				// 現金の場合、価格一覧を参照せずに評価額を算出する
+				presentValue = sumUnit
+			}
 
 			unitDataDetail := UnitDataDetail{
 				// 資産コード
@@ -115,19 +150,19 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 				// 現在価値
 				PresentValue: presentValue,
 				// 現在価値前日比
-				PresentValueDayBeforeProfit: presentValue - presentValueBeforeDay,
+				PresentValueDayBeforeProfit: presentValueDayBeforeProfit,
 				// 保持株数
 				TotalUnit: sumUnit,
 				// 株価
-				StockPrice: priceList[len(priceList)-1].Price,
+				StockPrice: stockPrice,
 				// 株価前日比
-				StockPriceDayBeforeProfit: priceList[len(priceList)-1].Price - priceList[len(priceList)-2].Price,
+				StockPriceDayBeforeProfit: stockPriceDayBeforeProfit,
 				// 株価前日比率
-				StockPriceDayBeforeProfitRate: float64(priceList[len(priceList)-1].Price-priceList[len(priceList)-2].Price) / float64(priceList[len(priceList)-1].Price) * 100,
+				StockPriceDayBeforeProfitRate: stockPriceDayBeforeProfitRate,
 				// 合計購入価格
 				TotalBuyPrice: sumAmount,
 				// 平均購入単価
-				AvaregeUnitPrice: basePriceConstant * sumAmount / sumUnit,
+				AvaregeUnitPrice: avaregeUnitPrice,
 			}
 			// 資産データをリストに追加
 			unitDataDetailList = append(unitDataDetailList, unitDataDetail)

@@ -100,7 +100,7 @@ func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate s
 	if assetCode == "" {
 		return nil, nil
 	}
-	filter := table.Scan().Filter("'AssetCode' = ?", assetCode)
+	filter := table.Get("AssetCode", assetCode)
 	if fromDate != "" && toDate != "" {
 		filter = filter.Filter("'Date' >= ?", fromDate)
 		filter = filter.Filter("'Date' <= ?", toDate)
@@ -108,6 +108,19 @@ func GetAssetPriceByAssetCodeAndDate(assetCode string, fromDate string, toDate s
 	err := filter.All(&assetDailyData)
 
 	return assetDailyData, err
+}
+
+/*
+ * 最新の日付を取得
+ */
+func GetLatestDay(assetCode string) string {
+	var assetDailyData []AssetDaily
+	// Dynamodb接続
+	table := connectDynamodb("asset_daily")
+	table.Get("AssetCode", assetCode).Order(false).Limit(1).All(&assetDailyData)
+	latestDay := assetDailyData[len(assetDailyData)-1].Date
+
+	return latestDay
 }
 
 /*
