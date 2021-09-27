@@ -55,24 +55,38 @@ func handler(request events.APIGatewayProxyRequest) (events.APIGatewayProxyRespo
 			sumAmount = sumAmount + data.Amount
 		}
 
-		// 指定した資産の0〜100日前までの価格を取得
-		priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
-		priceListPast100day := priceList[len(priceList)-100 : len(priceList)]
-
 		// 資産名取得
 		assetMaster, _ := models.GetAssetMasterByAssetCodeAndCategoryId(assetCode, "")
+
 		// 投資信託であれば、基準価格=1万口に合わせて、算出する
 		basePriceConstant := 1
 		if assetMaster[0].Type == config.ASSET_TYPE_INVESTMENT_TRUST {
 			basePriceConstant = 10000
 		}
 
-		for idx, data := range priceListPast100day {
-			pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / float64(basePriceConstant)))
-			totalPastAssetValue[idx] = totalPastAssetValue[idx] + pastAssetValue
-			totalPastAssetProfit[idx] = totalPastAssetProfit[idx] + (pastAssetValue - sumAmount)
-			dateList[idx] = data.Date
+		// 資産タイプが現金とそれ以外の場合で算出方法を分ける
+		if assetMaster[0].Type != config.ASSET_TYPE_CACHE {
+			// 指定した資産の0〜100日前までの価格を取得
+			priceList, _ := models.GetAssetPriceByAssetCodeAndDate(assetCode, "", "")
+			priceListPast100 := priceList[len(priceList)-100 : len(priceList)]
+
+			for idx, data := range priceListPast100 {
+				pastAssetValue := int(math.Round(float64(data.Price) * float64(sumUnit) / float64(basePriceConstant)))
+				totalPastAssetValue[idx] = totalPastAssetValue[idx] + pastAssetValue
+				totalPastAssetProfit[idx] = totalPastAssetProfit[idx] + (pastAssetValue - sumAmount)
+				dateList[idx] = data.Date
+			}
+		} else {
+			// 現金の場合、価格一覧を参照せずに評価額を算出する
+			dayList, _ := models.GetAssetPriceByAssetCodeAndDate("9C311125", "", "")
+			dayListPast100 := dayList[len(dayList)-100 : len(dayList)]
+
+			for idx, data := range dayListPast100 {
+				totalPastAssetValue[idx] = totalPastAssetValue[idx] + sumUnit
+				dateList[idx] = data.Date
+			}
 		}
+
 	}
 
 	// 構造体のスライス形式になるように形式を変換
